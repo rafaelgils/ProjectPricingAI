@@ -205,6 +205,25 @@ Cada fase termina em PRs `feature/<id>-<descricao>`, com *squash merge*, Convent
 - Cliente externo recebe `403`.
 - Testes do `MaterialService` e dos validadores passam, incluindo os casos de duplicidade (maiúsculas, acentos, inativo, nome × sinônimo) e de reativação.
 
+**Situação:** concluída em 04/10/2026, na branch `feature/6-catalogo-materiais`. O serviço ficou com o nome `ServicoCatalogo`.
+
+Teste de ponta a ponta pelo Kong, com tokens reais:
+- **Cadastro:** responde `201` com `Location`, `moeda: "BRL"` e `atualizadoEm` em `-03:00`.
+- **Duplicidade (RN10):** responde `409`, sem diferenciar maiúsculas e acentos e também entre nome e sinônimo.
+- **Validação:** responde `400` com mensagens por campo.
+- **Busca:** ignora acentos e encontra por sinônimo.
+- **Paginação:** funciona.
+- **Exclusão lógica:** `DELETE` inativa o material e `PUT` com `status: "ativo"` reativa.
+- **Permissões:** cliente-externo recebe `403`, e o cliente-interno não vê nem abre material inativo (`404`).
+- **Desempenho:** p95 de 8 ms em 40 listagens (meta do RNF02: 500 ms).
+
+Decisões de implementação:
+- **Visibilidade:** clientes veem só materiais ativos, mesmo pedindo `status=inativo`. Isso segue a definição de catálogo (`business-rules.md` §2).
+- **Busca sem acento:** a collation do MongoDB não vale para `$regex`. Por isso a busca usa uma expressão regular com classes de acentos (`a` → `[aáàâãä]`).
+- **Limites de cadastro:** nome e sinônimo com até 150 caracteres, categoria com até 100 e no máximo 20 sinônimos.
+- **Código dos enums:** a conversão entre código e enum (`"inativo"` ↔ `StatusMaterial.Inativo`) fica num único lugar do Domínio (`CodigosEnum`), usado pela API e pelo MongoDB.
+- **Concorrência:** dois cadastros simultâneos com o mesmo nome são barrados pelo índice único e também respondem `409`.
+
 ### F5 — Serviço de Precificação (RN01, RN05, RN08)
 
 Esta fase tem prioridade de cobertura (`standards.md` §7).
@@ -232,6 +251,25 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
   - Quantidade zero ou negativa gera exceção.
 
 **Critério de aceite:** cobertura do serviço perto de 100% e todos os exemplos de `business-rules.md` reproduzidos.
+
+**Situação:** concluída em 04/10/2026, na branch `feature/6-catalogo-materiais`, no mesmo commit da F4.
+- **Cobertura:** 100% de linhas e ramos nas classes de precificação. A única exceção é a declaração de uma constante `decimal`, que o coletor de cobertura conta como linha.
+- **Exemplos reproduzidos:**
+  - Os 8 casos da tabela RN08.
+  - Cada linha da tabela RN05.
+  - O exemplo da placa: 43,20 + 34,20 + 28,50 = R$ 105,90.
+  - 10 min × R$ 85,00/h = 0,17 h → R$ 14,45.
+  - 33 × 33 cm → 0,11 m².
+- **Como ficou o código:**
+  - Tudo está no Domínio (`ProjectPricing.Dominio.Precificacao`), sem dependência de banco nem de HTTP.
+  - `ArredondamentoMonetario` tem `ParaCalculo`, `ParaGravacao` e `Somar`.
+  - Há uma regra de conversão por unidade de destino (`IRegraConversao`), reunidas em `ConversorUnidades`.
+  - `IServicoPrecificacao` expõe `Calcular`, `CalcularItem` e `Totalizar`. `Totalizar` serve ao refinamento da F7, que recalcula só os itens alterados.
+- **Decisões de implementação:**
+  - Com largura × altura, a quantidade informada é o número de peças (registrado na RN05).
+  - Medida que não converte, medida faltando ou quantidade que zera ao arredondar geram `MedidaInvalidaException`, que responde `422 MEDIDA_INVALIDA` (registrado no `standards.md` §5).
+  - Valores com 2 casas mantêm a escala (43,20, e não 43,2) no banco e no JSON.
+  - O registro no contêiner de DI fica para a F6, onde o serviço passa a ser usado.
 
 ### F6 — Servidor MCP e Agente de Projetos (RF03, RF05, RF08, RN03, RN06, RN09, RN12)
 

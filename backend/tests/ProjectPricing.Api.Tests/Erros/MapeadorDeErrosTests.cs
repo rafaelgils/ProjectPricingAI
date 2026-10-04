@@ -37,6 +37,16 @@ public class MapeadorDeErrosTests
     }
 
     [Fact]
+    public void Medida_invalida_vira_422()
+    {
+        var problema = MapeadorDeErros.Mapear(new MedidaInvalidaException("A unidade \"ml\" não pode ser convertida para m2."));
+
+        Assert.Equal(422, problema.Status);
+        Assert.Equal("MEDIDA_INVALIDA", problema.Extensions["code"]);
+        Assert.Equal("A unidade \"ml\" não pode ser convertida para m2.", problema.Title);
+    }
+
+    [Fact]
     public void Projeto_arquivado_vira_422_com_a_mensagem_da_RN11()
     {
         var problema = MapeadorDeErros.Mapear(new ProjetoArquivadoException());
@@ -73,10 +83,11 @@ public class MapeadorDeErrosTests
     [Fact]
     public void Requisicao_malformada_vira_400()
     {
-        var problema = MapeadorDeErros.Mapear(new BadHttpRequestException("JSON inválido"));
+        var problema = MapeadorDeErros.Mapear(new BadHttpRequestException("Failed to read parameter from JSON"));
 
         Assert.Equal(400, problema.Status);
         Assert.Equal("VALIDACAO", problema.Extensions["code"]);
+        Assert.Equal(MapeadorDeErros.MensagemCorpoInvalido, problema.Title);
     }
 
     [Fact]

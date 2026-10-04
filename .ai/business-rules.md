@@ -1,6 +1,6 @@
 # Regras de negócio e domínio
 
-> Sistema de Cotação de Projetos · versão 0.8 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.9 · 04/10/2026
 > O que o sistema faz, para quem, e com quais regras. Referência para PO, desenvolvedores e testes de aceite.
 
 ## 1. Propósito
@@ -72,6 +72,8 @@ Os usuários são cadastrados pelo Admin. Não há autocadastro. Só o Admin alt
 | `L` | ml, L | 1 ml = 0,001 L |
 | `h` | min, h | 1 min = 1/60 h |
 | `un` | un | Sem conversão |
+
+Com largura × altura, uma quantidade informada é o número de peças: "2 placas de 60 x 60 cm" = 2 × 0,36 m² = 0,72 m². Uma medida que não converte para a unidade do material (ex.: ml para m²), uma medida faltando ou uma quantidade que zera ao arredondar retornam `422` com `code = MEDIDA_INVALIDA`.
 
 - **RN06 — Esclarecimento.** Se faltar medida ou quantidade necessária ao cálculo, o agente pergunta antes de calcular. A resposta é um erro `422` com `code = ESCLARECIMENTO_NECESSARIO` e a pergunta.
 - **RN07 — Visibilidade.** Cliente só acessa os próprios projetos; Admin acessa todos.

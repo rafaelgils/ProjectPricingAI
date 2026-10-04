@@ -8,13 +8,17 @@ public static class MapeadorDeErros
 {
     public const string ExtensaoCodigo = "code";
 
+    public const string MensagemCorpoInvalido =
+        "Requisição inválida: o corpo não é um JSON válido ou tem valores fora dos permitidos.";
+
     public static ProblemDetails Mapear(Exception excecao)
     {
         return excecao switch
         {
             ExcecaoDeDominio dominio => MapearDominio(dominio),
-            BadHttpRequestException requisicaoInvalida => Criar(
-                StatusCodes.Status400BadRequest, CodigosErro.Validacao, requisicaoInvalida.Message),
+            // Ex.: JSON malformado ou enum com valor desconhecido ("unidade": "km").
+            BadHttpRequestException => Criar(
+                StatusCodes.Status400BadRequest, CodigosErro.Validacao, MensagemCorpoInvalido),
             _ => Criar(
                 StatusCodes.Status500InternalServerError,
                 CodigosErro.ErroInterno,
@@ -50,7 +54,7 @@ public static class MapeadorDeErros
         RecursoNaoEncontradoException => StatusCodes.Status404NotFound,
         MaterialDuplicadoException => StatusCodes.Status409Conflict,
         FalhaProcessamentoException => StatusCodes.Status500InternalServerError,
-        // ITENS_NAO_ENCONTRADOS, ESCLARECIMENTO_NECESSARIO e PROJETO_ARQUIVADO: regra de negócio violada.
+        // ITENS_NAO_ENCONTRADOS, ESCLARECIMENTO_NECESSARIO, PROJETO_ARQUIVADO e MEDIDA_INVALIDA: regra de negócio violada.
         _ => StatusCodes.Status422UnprocessableEntity,
     };
 

@@ -100,6 +100,7 @@ Códigos de erro (`code`). Toda resposta de erro da API tem `code`, inclusive as
 | `ITENS_NAO_ENCONTRADOS` | 422 | RN03 |
 | `ESCLARECIMENTO_NECESSARIO` | 422 | RN06 e RN09 |
 | `PROJETO_ARQUIVADO` | 422 | RN11, mensagem "Este projeto está inativo." |
+| `MEDIDA_INVALIDA` | 422 | RN05: unidade que não converte para a do material, medida faltando ou quantidade que zera ao arredondar |
 | `FALHA_PROCESSAMENTO` | 500 | RN12 |
 | `ERRO_INTERNO` | 500 | Erro inesperado; o detalhe vai só para o log |
 

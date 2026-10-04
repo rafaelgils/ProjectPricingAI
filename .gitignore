@@ -1,0 +1,34 @@
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+TestResults/
+coverage*.xml
+*.coverage
+
+# Node / Vite
+node_modules/
+dist/
+coverage/
+*.local
+npm-debug.log*
+
+# IDEs
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

@@ -433,6 +433,27 @@ Decisões de implementação:
 - WCAG 2.1 AA (`aria-live` no chat, foco e teclado) e layout responsivo.
 - Testes de componentes (Vitest + Testing Library) nos fluxos de cotação, confirmação e catálogo.
 
+**Situação:** concluída em 04/10/2026, na branch `feature/9-frontend`. Não foi testada num navegador real (o ambiente de trabalho não tem um): fica para a validação manual.
+
+- **Testes:** 17 testes de componentes, com 84% de cobertura de linhas. Eles renderizam o app real (rotas, react-query e cliente da API), simulando só o login e as respostas da API:
+  - **Cotação nova:** streaming, tabela de itens com os valores da API e navegação para o projeto criado.
+  - **Itens não encontrados (RN03):** lista os termos, sem valor parcial.
+  - **Confirmação (RN09):** sugestões por similaridade e do assistente; o clique envia a mensagem de confirmação.
+  - **Projeto arquivado (RN11):** somente leitura.
+  - **Catálogo:** validação no formulário (inclusive preço com 2 casas), cadastro com sinônimos, duplicidade (409) apontada no campo nome e permissões por papel (o externo não vê o catálogo).
+  - **Lista de projetos:** exclusão com confirmação e filtro por status.
+  - **Leitor de SSE:** junta eventos partidos, inclusive no meio de um caractere acentuado.
+- **No ambiente Docker:**
+  - O contêiner gera o `/env.js` na subida a partir das variáveis de ambiente (P5), servido com `no-store`.
+  - As rotas do SPA respondem pelo `index.html`, e os assets com hash ficam em cache de longo prazo.
+  - O Keycloak aceita o redirect do frontend e responde com CORS para `localhost:3000` na troca do token; o Kong também responde com CORS para essa origem.
+- **Decisões de implementação:**
+  - **Resolver de formulário próprio:** o `@hookform/resolvers` não está no `tech-stack.md`, então a ligação entre `zod` e `react-hook-form` é uma função de 20 linhas (`src/formularios/resolverZod.ts`).
+  - **Perfil e papéis:** vêm de `/api/v1/usuarios/me`, e não do token. O menu e os botões seguem a matriz de `business-rules.md` §3, e a API confere de novo.
+  - **Sessão:** o token fica no `sessionStorage` (`oidc-client-ts`), com renovação silenciosa.
+  - **Rodada da conversa:** os deltas aparecem na hora. Ao chegar o `fim`, o histórico gravado é recarregado, e a cotação recebida no evento `cotacao` atualiza a tabela sem nova chamada.
+  - **Acessibilidade (WCAG 2.1 AA):** rótulos em todos os campos, erros com `aria-invalid` e `aria-describedby`, conversa com `role="log"` e `aria-live`, link para pular ao conteúdo, foco visível e cores com contraste mínimo de 4,5:1.
+
 ### F9 — Contêineres e segurança
 
 - Dockerfiles *multi-stage*, com imagens base oficiais, tags fixas e usuário não-root.

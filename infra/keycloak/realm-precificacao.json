@@ -2,7 +2,9 @@
   "realm": "precificacao",
   "enabled": true,
   "displayName": "Cotação de Projetos",
+  "sslRequired": "external",
   "registrationAllowed": false,
+  "resetPasswordAllowed": false,
   "internationalizationEnabled": true,
   "supportedLocales": ["pt-BR"],
   "defaultLocale": "pt-BR",
@@ -11,6 +13,137 @@
       { "name": "admin", "description": "Administra materiais, usuários e vê todos os projetos" },
       { "name": "cliente-interno", "description": "Cota projetos e consulta o catálogo" },
       { "name": "cliente-externo", "description": "Cota projetos; não acessa a tela do catálogo" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "precificacao-frontend",
+      "name": "Frontend SPA",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-precificacao-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "precificacao-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "precificacao-api",
+      "name": "API do Backend (audiência dos tokens)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "precificacao-admin",
+      "name": "Backend: Keycloak Admin API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_ADMIN_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-precificacao-admin",
+      "enabled": true,
+      "serviceAccountClientId": "precificacao-admin",
+      "clientRoles": {
+        "realm-management": ["view-users", "manage-users"]
+      }
+    },
+    {
+      "username": "admin.teste",
+      "enabled": true,
+      "email": "admin.teste@exemplo.local",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Teste",
+      "credentials": [
+        { "type": "password", "value": "${KEYCLOAK_TEST_USER_PASSWORD}", "temporary": false }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "interno.teste",
+      "enabled": true,
+      "email": "interno.teste@exemplo.local",
+      "emailVerified": true,
+      "firstName": "Cliente Interno",
+      "lastName": "Teste",
+      "credentials": [
+        { "type": "password", "value": "${KEYCLOAK_TEST_USER_PASSWORD}", "temporary": false }
+      ],
+      "realmRoles": ["cliente-interno"]
+    },
+    {
+      "username": "externo.teste",
+      "enabled": true,
+      "email": "externo.teste@exemplo.local",
+      "emailVerified": true,
+      "firstName": "Cliente Externo",
+      "lastName": "Teste",
+      "credentials": [
+        { "type": "password", "value": "${KEYCLOAK_TEST_USER_PASSWORD}", "temporary": false }
+      ],
+      "realmRoles": ["cliente-externo"]
+    }
+  ],
+  "components": {
+    "org.keycloak.keys.KeyProvider": [
+      {
+        "name": "rsa-fixa",
+        "providerId": "rsa",
+        "subComponents": {},
+        "config": {
+          "priority": ["200"],
+          "enabled": ["true"],
+          "active": ["true"],
+          "algorithm": ["RS256"],
+          "keyUse": ["sig"],
+          "privateKey": ["${REALM_RSA_PRIVATE_KEY}"]
+        }
+      },
+      {
+        "name": "hmac-generated",
+        "providerId": "hmac-generated",
+        "subComponents": {},
+        "config": { "priority": ["100"], "algorithm": ["HS512"] }
+      },
+      {
+        "name": "aes-generated",
+        "providerId": "aes-generated",
+        "subComponents": {},
+        "config": { "priority": ["100"] }
+      }
     ]
   }
 }

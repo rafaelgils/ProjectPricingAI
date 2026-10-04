@@ -127,14 +127,22 @@ Cada fase termina em PRs `feature/<id>-<descricao>`, com *squash merge*, Convent
 - Plugin `cors` liberando só `http://localhost:3000`.
 - Plugin `jwt` com RS256 e `claims_to_verify=exp`. O consumidor tem `key` igual ao `iss` e `rsa_public_key` igual à chave fixa (ADR-010).
 - Para o SSE:
-  - Rotas `POST /api/v1/projetos` e `POST /api/v1/projetos/{id}/mensagens` com `response_buffering=false`.
+  - `response_buffering=false` na rota `/api/v1` inteira, e não em rotas separadas para `POST /projetos` e `POST /projetos/{id}/mensagens`.
+    - Uma rota só evita depender da prioridade entre rotas de expressão regular e de prefixo no roteador do Kong.
+    - O buffer só seria necessário para plugins que alteram o corpo da resposta, e nenhum é usado.
   - `read_timeout` de 120 s no serviço `backend`. No Kong, o *timeout* é configurado no serviço, não na rota.
-- Rota `/openapi/v1.json`.
+- Rota `/openapi/v1.json`, sem JWT.
 
 **Critério de aceite:**
 - O login PKCE devolve um token com `realm_access.roles`.
 - Uma chamada sem token ao Kong recebe `401`.
 - Uma chamada com token chega ao Backend.
+
+**Situação:** concluída em 04/10/2026, na branch `feature/4-identidade-borda`.
+- Login PKCE testado com os 3 usuários de teste: os tokens trazem `iss` público, `aud=precificacao-api` e o papel em `realm_access.roles`, e a troca sem `code_verifier` é recusada.
+- O Kong devolve `401` sem token e também com assinatura alterada, payload forjado, `alg: none` ou issuer desconhecido.
+- Com token válido, a chamada chega ao Backend.
+- A chave publicada pelo realm é a mesma do `kong.yml`, e a service account `precificacao-admin` acessa a Admin API.
 
 ### F3 — Fundação do Backend
 

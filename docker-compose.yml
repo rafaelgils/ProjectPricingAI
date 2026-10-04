@@ -28,6 +28,10 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?defina KEYCLOAK_ADMIN_USER no .env}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD no .env}
+      # Placeholders do realm-precificacao.json, resolvidos na importação
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?defina KEYCLOAK_ADMIN_CLIENT_SECRET no .env}
+      KEYCLOAK_TEST_USER_PASSWORD: ${KEYCLOAK_TEST_USER_PASSWORD:?defina KEYCLOAK_TEST_USER_PASSWORD no .env}
+      REALM_RSA_PRIVATE_KEY: ${REALM_RSA_PRIVATE_KEY:?rode ./scripts/gerar-chave-realm.sh}
       KC_HTTP_PORT: "8080"
       KC_HOSTNAME: http://localhost:8080
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"

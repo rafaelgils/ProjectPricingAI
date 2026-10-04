@@ -1,16 +1,67 @@
 # Configuração declarativa do Kong OSS 3.9 (modo DB-less).
-# Plugins cors e jwt (ADR-010) e as rotas de SSE entram na fase F2.
 _format_version: '3.0'
 
 services:
   - name: backend
     url: http://backend:8080
+    # SSE da cotação e do refinamento (standards.md §5): o timeout de leitura fica no serviço.
+    read_timeout: 120000
     routes:
       - name: api-v1
         paths:
           - /api/v1
         strip_path: false
+        # Sem buffer de resposta: os eventos SSE chegam ao navegador assim que o backend os envia.
+        response_buffering: false
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify:
+                - exp
+              header_names:
+                - authorization
+              # O preflight do CORS não leva token; quem responde a ele é o plugin cors.
+              run_on_preflight: false
       - name: openapi
         paths:
           - /openapi/v1.json
         strip_path: false
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:3000
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Authorization
+        - Content-Type
+        - Accept
+      exposed_headers:
+        - Location
+      credentials: false
+      max_age: 3600
+
+# ADR-010: o Kong OSS não lê o JWKS do Keycloak. O consumidor tem como chave o "iss" do realm
+# e a chave pública fixa do realm. Para trocar a chave: ./scripts/gerar-chave-realm.sh --forcar
+consumers:
+  - username: keycloak-precificacao
+    jwt_secrets:
+      - key: http://localhost:8080/realms/precificacao
+        algorithm: RS256
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6NIQKiyyJKxLpn5XKmID
+          LRm8/OQ441fqMeGdKFzq02kq8GRqTkuwzygReylzSXHZ8bVry5Ge7boKnGer2L3S
+          WBbJ/oVR0ISRgg4+lhyCMGUwzN7S94SJHbh6iywKXUXMQLoc0KSvZgLpO15dsSv+
+          f9g5CEdRu9T0fWBdMtMU4aE0vctZpjJtKPDpD0Xth2+bYzDXWlNoS/TM1jq1NqzJ
+          +df9Do8IBuOiKXoNssRezaGeLkiO0hljN1S5lqP8SxCSuzfiMJTQB5FRvj88rUaq
+          FRZScn5OpXBVstcZYNxHx3dmYqoT0qxI0NDKwmU1zlLapXO0yJo6hi9Ojo9MAHRW
+          jQIDAQAB
+          -----END PUBLIC KEY-----

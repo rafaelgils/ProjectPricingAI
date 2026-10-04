@@ -1,6 +1,6 @@
 # Padrões de código e estilo
 
-> Sistema de Cotação de Projetos · versão 0.7 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.8 · 04/10/2026
 > Regras que todo código, API e prompt do projeto seguem. Exceções exigem ADR em `architecture.md`.
 
 ## 1. Controle de versão
@@ -41,11 +41,11 @@ Valem para Backend e Frontend e são critério de aprovação em revisão de có
 - `Nullable` habilitado em todos os projetos.
 - Termos de domínio em português, iguais ao modelo de dados (`Material`, `Projeto`, `ItemProjeto`, `Conversa`).
 - Valores monetários e quantidades sempre `decimal` em C# e `Decimal128` no MongoDB. **Nunca** `double` ou `float`.
-- Precisão conforme RN08 (`business-rules.md`): valores gravados e devolvidos pela API têm 2 casas decimais; os cálculos usam 3 casas.
+- Precisão conforme RN08 (`business-rules.md`): valores gravados e devolvidos pela API têm 2 casas decimais; os cálculos usam 3 casas. A quantidade é levada a 2 casas antes de multiplicar, para o cálculo usar a quantidade exibida.
 - Arredondamento implementado em funções únicas do Serviço de Precificação:
     - Para 3 casas: `Math.Round(valor, 3, MidpointRounding.AwayFromZero)`.
     - De 3 para 2 casas: limiar próprio na 3ª casa decimal (constante `LimiarArredondamento = 6`). Vale para reais e quantidades. Não usar o `Math.Round` padrão nessa etapa, porque ele segue outra regra.
-- Similaridade da RN09: distância de Levenshtein normalizada sobre os textos normalizados (minúsculas, sem acentos, sem espaços extras).
+- Similaridade da RN09: distância de Levenshtein normalizada sobre os textos normalizados (minúsculas, sem acentos, sem espaços extras), comparando o termo com o nome e com cada sinônimo do material.
     - Implementada no próprio Backend, sem biblioteca externa, numa única função de domínio e de forma determinística.
     - O limiar é uma constante nomeada (`LimiarSimilaridade = 0.80`). O LLM não decide a similaridade.
 - I/O assíncrono de ponta a ponta, propagando `CancellationToken`.
@@ -115,6 +115,7 @@ Códigos de erro (`code`) de regra de negócio e de falha:
 - Prompts de sistema e definições das tools MCP ficam versionados no repositório, revisados em PR como código.
 - O LLM **nunca** calcula valores: retorna itens, quantidades, medidas e unidades informadas em saída estruturada, validada por schema no Backend antes do cálculo.
 - O LLM recebe só a tool `buscarMateriais`. As tools `calcular` e `salvarProjeto` são chamadas apenas pelo código do agente (ADR-006).
+- Sugestão de material (RN09, passo 2): o LLM só escolhe entre os materiais da lista enviada pelo agente. O `materialId` devolvido é validado contra a lista, e a sugestão sempre passa por confirmação do cliente.
 - **Suíte de regressão:** 30 descrições de referência com valor esperado, sobre um catálogo de referência. Os preços desse catálogo são valores de exemplo pesquisados na internet durante o desenvolvimento e fixados no repositório. A suíte é composta de testes unitários: o LLM é um *mock* que devolve uma resposta fixa por descrição (§7). Toda mudança de prompt, de schema ou do Serviço de Precificação roda a suíte. Como o LLM é simulado, a suíte não mede o efeito real de uma mudança de prompt; esse risco foi aceito no MVP.
 
 ## 7. Testes
@@ -140,7 +141,7 @@ Códigos de erro (`code`) de regra de negócio e de falha:
 - Imagens base apenas oficiais e com tag de versão fixa, nunca `latest`; a lista está em `tech-stack.md`.
 - Imagens de Frontend e Backend construídas com *multi-stage build* (etapa de build separada da etapa de execução).
 - Ambiente local sobe todas as camadas com um único `docker compose up`.
-- Configuração por variáveis de ambiente; nenhuma chave ou senha gravada na imagem. No ambiente local, os segredos ficam num `.env` fora do Git; fora dele, no AWS KMS.
+- Configuração por variáveis de ambiente; nenhuma chave ou senha gravada na imagem. No ambiente local, os segredos ficam num `.env` fora do Git; fora dele, no AWS Secrets Manager.
 - O ambiente local usa HTTP. Neste momento só existe o ambiente local.
 - Tags das imagens seguem a versão semântica da release. Por enquanto não há registro de imagens: as imagens ficam no Docker instalado na máquina.
 

@@ -1,6 +1,6 @@
 # Arquitetura e decisões (ADRs)
 
-> Sistema de Cotação de Projetos · versão 0.7 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.8 · 04/10/2026
 > Visão de alto nível, atributos de qualidade e registro das decisões de arquitetura.
 
 ## 1. Visão geral
@@ -34,10 +34,10 @@ flowchart TB
 | Borda | API Gateway (Kong OSS) | Roteamento, validação de JWT com a chave pública do realm (ADR-010), CORS |
 | Identidade | Keycloak | Usuários, papéis, emissão de tokens |
 | Aplicação | Backend .NET | APIs REST, regras de negócio, autorização por papel |
-| Aplicação | Agente de Projetos | Orquestra o diálogo, chama as tools, monta a resposta ou o erro (itens não encontrados, esclarecimento) |
+| Aplicação | Agente de Projetos | Orquestra o diálogo, chama as tools, pede ao LLM sugestões de material para termos sem correspondência e monta a resposta ou o erro (itens não encontrados, esclarecimento) |
 | Aplicação | Serviço de Precificação | Cálculo determinístico, conversão de unidades, cálculo de área e congelamento dos preços na cotação |
 | Integração | Servidor MCP | Tools `buscarMateriais`, `calcular`, `salvarProjeto` |
-| Externo | LLM: Anthropic Claude Opus 5.5 | Interpretação de linguagem natural e chamada da tool `buscarMateriais` |
+| Externo | LLM: Anthropic Claude Opus 5.5 | Interpretação de linguagem natural, chamada da tool `buscarMateriais` e sugestão de material para confirmação do cliente (RN09) |
 | Dados | MongoDB | Coleções `materiais`, `projetos`, `conversas` |
 
 Versões e bibliotecas: ver `tech-stack.md`.
@@ -78,7 +78,7 @@ flowchart LR
 
 | ID | Categoria | Requisito |
 | --- | --- | --- |
-| RNF01 | Segurança | JWT validado no Gateway e no Backend; HTTPS obrigatório fora do ambiente local (o ambiente local usa HTTP); segredos em `.env` no ambiente local e no AWS KMS fora dele |
+| RNF01 | Segurança | JWT validado no Gateway e no Backend; HTTPS obrigatório fora do ambiente local (o ambiente local usa HTTP); segredos em `.env` no ambiente local e no AWS Secrets Manager fora dele |
 | RNF02 | Desempenho | CRUD de materiais em até 500 ms (p95); primeira parte da resposta da cotação em até 3 s via streaming |
 | RNF04 | Manutenibilidade | Cobertura de testes unitários ≥ 70% no Backend; API documentada em OpenAPI |
 | RNF05 | Usabilidade | Interface responsiva em português; acessibilidade WCAG 2.1 AA |
@@ -113,8 +113,16 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 
 - **Status:** Aceita · 04/10/2026 (substitui a proposta de busca web da v0.1)
 - **Contexto:** o requisito original previa buscar preços na internet quando o material não existisse na base. Isso traria preços de fontes não controladas, custo de mais um provedor e um fluxo de aprovação.
-- **Decisão:** não há busca externa. A correspondência entre termo e material segue a similaridade da RN09. Se qualquer item da descrição ficar abaixo de 80% de similaridade, a cotação **não é calculada** e o agente retorna `422` com `code = ITENS_NAO_ENCONTRADOS` e a lista dos itens. Entre 80% e menos de 100%, o agente pede confirmação ao cliente (`422 ESCLARECIMENTO_NECESSARIO`).
-- **Consequências:** preços sempre controlados pelo Admin; a qualidade da cotação depende de um catálogo completo; o projeto fica em `rascunho` até o cliente ajustar a descrição ou o Admin cadastrar o item.
+- **Decisão:** não há busca externa. A correspondência entre termo e material segue os dois passos da RN09:
+    - **Passo 1:** similaridade por Levenshtein sobre o nome e os sinônimos do material.
+    - **Passo 2:** abaixo de 80%, sugestão do LLM entre os materiais ativos.
+    - Entre 80% e menos de 100%, ou quando houver sugestão do LLM, o agente pede confirmação ao cliente (`422 ESCLARECIMENTO_NECESSARIO`).
+    - Se algum termo ficar sem correspondência e sem sugestão, a cotação **não é calculada** e o agente retorna `422` com `code = ITENS_NAO_ENCONTRADOS` e a lista dos itens.
+- **Consequências:**
+    - Preços sempre controlados pelo Admin.
+    - A qualidade da cotação depende de um catálogo completo e de sinônimos bem cadastrados.
+    - Nenhuma troca de material feita pelo LLM entra na cotação sem confirmação do cliente.
+    - O projeto fica em `rascunho` até o cliente confirmar, ajustar a descrição ou o Admin cadastrar o item.
 
 ### ADR-003 — MongoDB como base única, com documentos embutidos
 
@@ -123,6 +131,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 - **Decisão:** um cluster MongoDB com as coleções `materiais`, `projetos` (com itens embutidos) e `conversas` (com mensagens embutidas). Usuários não são persistidos no MongoDB.
 - **Consequências:** leitura da cotação em uma consulta; valores em `Decimal128`. Índices:
     - `materiais.nome` único, com *collation* `pt` de força 1, que ignora maiúsculas e acentos e vale também para inativos (RN10).
+    - `materiais.sinonimos` único (índice *multikey*), com a mesma *collation*. Repetir o nome de outro material como sinônimo é barrado pelo serviço de domínio (RN10).
     - `projetos.clienteId`.
     - `conversas.projetoId` único.
 
@@ -144,8 +153,12 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 
 - **Status:** Aceita · 04/10/2026
 - **Contexto:** o MCP aparecia só na tool de materiais.
-- **Decisão:** um Servidor MCP expõe `buscarMateriais`, `calcular` e `salvarProjeto`. As tools chamam os serviços de domínio, nunca o banco direto. O LLM recebe **apenas** `buscarMateriais`; `calcular` e `salvarProjeto` são chamadas **somente pelo código do agente**, depois que a saída estruturada do LLM é validada.
-- **Consequências:** regras de negócio e autorização aplicadas também nas chamadas do agente; tools testáveis isoladamente; o LLM não tem como disparar cálculo nem gravação.
+- **Decisão:** um Servidor MCP expõe `buscarMateriais`, `calcular` e `salvarProjeto`. As tools chamam os serviços de domínio, nunca o banco direto. O LLM recebe **apenas** `buscarMateriais`; `calcular` e `salvarProjeto` são chamadas **somente pelo código do agente**, depois que a saída estruturada do LLM é validada. Para o passo 2 da RN09, o próprio agente envia ao LLM a lista de materiais ativos (id, nome, categoria e unidade) numa chamada à parte, com saída estruturada `{ termo, materialId | null }`. Não há tool nova.
+- **Consequências:**
+    - Regras de negócio e autorização aplicadas também nas chamadas do agente.
+    - Tools testáveis isoladamente.
+    - O LLM não tem como disparar cálculo nem gravação.
+    - O `materialId` sugerido pelo LLM é validado contra a lista enviada.
 
 ### ADR-007 — Cotação congelada na emissão
 
@@ -248,11 +261,11 @@ sequenceDiagram
     participant G as API Gateway
     participant B as Backend .NET
     participant M as MongoDB (materiais)
-    A->>F: Preenche nome, tipo, categoria, unidade, preço e fornecedor
+    A->>F: Preenche nome, sinônimos, tipo, categoria, unidade, preço e fornecedor
     F->>G: POST /api/v1/materiais
     G->>B: Repassa (JWT válido)
     B->>B: Confere papel admin e valida campos
-    alt Dados inválidos ou nome duplicado (inclusive inativo)
+    alt Dados inválidos, nome ou sinônimo duplicado (inclusive inativo)
         B-->>F: 400 / 409 com mensagens por campo
     else Dados válidos
         B->>M: insertOne(material, status=ativo)
@@ -281,10 +294,10 @@ sequenceDiagram
     B-->>F: 201 Created + Location, abre o stream SSE
     B->>AG: Interpretar descrição
     AG->>L: Prompt + histórico + tool buscarMateriais
-    L-->>AG: Chamar buscarMateriais(["chapa de aço galvanizado","película refletiva","cabeçote de metal"])
+    L-->>AG: Chamar buscarMateriais(["placa","tinta reflexiva","cabeçote de metal"])
     AG->>MCP: buscarMateriais(...)
     MCP->>DB: Consulta materiais ativos (via serviço de domínio)
-    MCP-->>AG: Material mais próximo e similaridade de cada termo (todos 100%)
+    MCP-->>AG: Material mais próximo de cada termo, por nome ou sinônimo (todos 100%)
     AG->>L: Resultado da tool
     L-->>AG: Itens estruturados (materialId, quantidade ou medidas, unidade informada)
     AG->>AG: Valida a saída por schema
@@ -317,6 +330,8 @@ sequenceDiagram
     AG->>MCP: buscarMateriais(...)
     MCP->>DB: Consulta materiais ativos (via serviço de domínio)
     MCP-->>AG: "cabeçote de metal" com similaridade abaixo de 80%
+    AG->>L: Lista de materiais ativos + termo "cabeçote de metal": há material com o mesmo sentido?
+    L-->>AG: Nenhuma sugestão (materialId = null)
     AG->>AG: Interrompe a cotação, sem calcular valor parcial (RN03)
     AG-->>B: Erro ITENS_NAO_ENCONTRADOS
     B->>DB: Mantém projeto em rascunho e grava a mensagem
@@ -324,7 +339,7 @@ sequenceDiagram
     Note over C,B: Cliente ajusta a descrição ou pede ao Admin o cadastro do item
 ```
 
-### 5.5 Material com similaridade incerta: confirmação
+### 5.5 Confirmação de material: similaridade incerta ou sugestão do agente
 
 ```mermaid
 sequenceDiagram
@@ -332,16 +347,19 @@ sequenceDiagram
     actor C as Cliente
     participant B as Backend .NET
     participant AG as Agente de Projetos
+    participant L as LLM (Claude Opus 5.5)
     participant MCP as Servidor MCP
     participant DB as MongoDB
-    C->>B: POST /api/v1/projetos {descricao com "película reflexiva"}
+    C->>B: POST /api/v1/projetos {descricao com "película reflexiva" e "cantoneira"}
     B-->>C: 201 Created, abre o stream SSE
     B->>AG: Interpretar descrição
-    AG->>MCP: buscarMateriais(["película reflexiva", ...])
-    MCP-->>AG: "Película refletiva" com similaridade de 94% (Levenshtein normalizado)
-    AG->>AG: Similaridade entre 80% e 100%: pede confirmação (RN09)
+    AG->>MCP: buscarMateriais(["película reflexiva","cantoneira", ...])
+    MCP-->>AG: "película reflexiva" → "Película refletiva" com 94%; "cantoneira" abaixo de 80%
+    AG->>L: Lista de materiais ativos + termo "cantoneira": há material com o mesmo sentido?
+    L-->>AG: Sugere "Suporte em L de aço" (materialId da lista)
+    AG->>AG: Valida o materialId contra a lista; as duas correspondências pedem confirmação (RN09)
     B->>DB: Mantém projeto em rascunho e grava a pergunta
-    B-->>C: Evento SSE erro (422 ESCLARECIMENTO_NECESSARIO) com a sugestão, fim
-    C->>B: POST /api/v1/projetos/{id}/mensagens "Sim, película refletiva"
-    Note over C,B: O agente refaz a cotação com o material confirmado (fluxo 5.3)
+    B-->>C: Evento SSE erro (422 ESCLARECIMENTO_NECESSARIO) com as sugestões, fim
+    C->>B: POST /api/v1/projetos/{id}/mensagens "Sim, pode usar os dois"
+    Note over C,B: O agente refaz a cotação com os materiais confirmados (fluxo 5.3)
 ```

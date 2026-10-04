@@ -1,6 +1,6 @@
 # Stack tecnológica
 
-> Sistema de Cotação de Projetos · versão 0.7 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.8 · 04/10/2026
 > Versões e bibliotecas permitidas. Incluir uma biblioteca fora desta lista exige aprovação do Tech Lead e atualização deste arquivo no mesmo PR.
 
 **Regra de versões:** usar sempre a última versão de *patch* da linha indicada. Mudança de versão *major* exige ADR em `architecture.md`. Todas as versões abaixo foram confirmadas em 04/10/2026.
@@ -21,7 +21,7 @@
 | Protocolo das tools | Model Context Protocol, SDK oficial C# | Versão estável atual no NuGet | Pacotes `ModelContextProtocol` e `ModelContextProtocol.AspNetCore` ([documentação](https://csharp.sdk.modelcontextprotocol.io/v2/)) |
 | Contêineres | Docker Engine + Docker Compose (v2, comando `docker compose`) | Versão estável atual | Padrões de uso em `standards.md` |
 | Registro de imagens | Nenhum por enquanto | — | Imagens próprias (`frontend`, `backend`) com tag semver, mantidas no Docker instalado na máquina |
-| Cofre de segredos | AWS KMS | — | Fora do ambiente local; no ambiente local, `.env` fora do Git |
+| Cofre de segredos | AWS Secrets Manager | — | Fora do ambiente local: guarda a chave da Claude API, as senhas do MongoDB e do Keycloak e a chave privada do realm. No ambiente local, `.env` fora do Git |
 | CI | — | — | Não há pipeline de CI no MVP |
 | LLM | **Anthropic Claude Opus 5.5** | ID do modelo: `claude-opus-5-5` | Via Claude API; janela de contexto de 1M tokens ([fonte](https://platform.claude.com/docs/en/models/overview)). Decisão no ADR-008 |
 

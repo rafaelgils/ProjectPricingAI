@@ -1,6 +1,6 @@
 # Regras de negócio e domínio
 
-> Sistema de Cotação de Projetos · versão 0.7 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.8 · 04/10/2026
 > O que o sistema faz, para quem, e com quais regras. Referência para PO, desenvolvedores e testes de aceite.
 
 ## 1. Propósito
@@ -18,8 +18,10 @@ O cliente descreve um projeto em linguagem natural e recebe o valor estimado em 
 | Projeto | Pedido de cotação de um cliente, com descrição, itens e valor total |
 | Item do projeto | Material usado no projeto, com quantidade, unidade e preço congelado |
 | Cotação | Valor estimado de um projeto, com a lista de itens e o preço unitário de cada item congelado na data em que o item entrou na cotação |
-| Item não encontrado | Item da descrição sem material correspondente no catálogo ativo (similaridade abaixo de 80%); impede o cálculo da cotação |
-| Similaridade | Grau de semelhança, de 0% a 100%, entre o termo da descrição e o nome de um material do catálogo (RN09) |
+| Item não encontrado | Item da descrição sem material correspondente no catálogo ativo (similaridade abaixo de 80% e sem sugestão do agente); impede o cálculo da cotação |
+| Similaridade | Grau de semelhança, de 0% a 100%, entre o termo da descrição e o nome ou um sinônimo de um material do catálogo (RN09) |
+| Sinônimo | Outro nome pelo qual o cliente pode chamar um material (ex.: "placa" para "Chapa de aço galvanizado"), cadastrado pelo Admin |
+| Sugestão do agente | Material que o LLM propõe, pelo sentido, para um termo sem correspondência; só é usado se o cliente confirmar (RN09) |
 | Conversa | Histórico de mensagens entre cliente e agente de um projeto |
 
 ## 3. Perfis e permissões
@@ -40,13 +42,13 @@ Os usuários são cadastrados pelo Admin. Não há autocadastro. Só o Admin alt
 | ID | Requisito | Perfil | Prioridade |
 | --- | --- | --- | --- |
 | RF01 | Autenticar via Keycloak (OIDC) e encerrar sessão | Todos | Must |
-| RF02 | Cadastrar, alterar, consultar, inativar e reativar materiais e serviços (nome, tipo, categoria, unidade, preço unitário, fornecedor) | Admin | Must |
+| RF02 | Cadastrar, alterar, consultar, inativar e reativar materiais e serviços (nome, sinônimos, tipo, categoria, unidade, preço unitário, fornecedor) | Admin | Must |
 | RF03 | Descrever um projeto em linguagem natural e receber o valor estimado com a lista de itens | Cliente, Admin | Must |
 | RF04 | Refinar a cotação em conversa ("troque para 80x80", "inclua parafusos", "tire o cabeçote"), alterando quantidades e incluindo, removendo ou trocando materiais, e mantendo o histórico | Cliente, Admin | Must |
 | RF05 | Retornar erro com a lista de itens não encontrados no catálogo, sem calcular valor parcial | Sistema | Must |
 | RF06 | Manter o preço unitário de cotações emitidas inalterado quando o preço de um material mudar | Sistema | Must |
 | RF07 | Listar, abrir e excluir projetos salvos | Cliente, Admin | Should |
-| RF08 | Pedir esclarecimento quando faltar medida ou quantidade, ou para confirmar o material quando a similaridade não for exata | Sistema | Should |
+| RF08 | Pedir esclarecimento quando faltar medida ou quantidade, ou para confirmar o material quando a similaridade não for exata ou quando o material for uma sugestão do agente | Sistema | Should |
 | RF09 | Exportar a cotação em PDF | Cliente | Fora do MVP |
 | RF10 | Gerenciar usuários e papéis pela aplicação | Admin | Could |
 
@@ -75,9 +77,10 @@ Os usuários são cadastrados pelo Admin. Não há autocadastro. Só o Admin alt
 - **RN07 — Visibilidade.** Cliente só acessa os próprios projetos; Admin acessa todos.
 - **RN08 — Precisão e arredondamento.**
     - **Gravação e exibição:** todos os valores gravados na base e exibidos ao usuário (quantidade, preço unitário, subtotal e total) têm **2 casas decimais**.
-    - **Cálculo:** usa **3 casas decimais**. Um resultado intermediário com mais de 3 casas (por exemplo, uma quantidade convertida ou um produto) é primeiro arredondado para 3 casas pelo arredondamento comum (4ª casa ≥ 5 sobe).
+    - **Cálculo:** usa **3 casas decimais**. Um resultado intermediário com mais de 3 casas (por exemplo, uma quantidade convertida, uma área ou um produto) é primeiro arredondado para 3 casas pelo arredondamento comum (4ª casa ≥ 5 sobe).
     - **De 3 para 2 casas:** olha a 3ª casa decimal. Se ela for **maior que 5 (6 a 9), arredonda para cima**; se for **5 ou menor, arredonda para baixo**. A mesma regra vale para valores em reais e para quantidades.
-    - O subtotal de cada item é calculado com a quantidade em 3 casas e depois arredondado para 2 casas. O total é a soma dos subtotais arredondados.
+    - **Quantidade:** é levada a 2 casas **antes** da multiplicação, pela mesma regra. Assim o cálculo usa exatamente a quantidade exibida, e o cliente consegue refazer a conta de cada item com o que vê na tela.
+    - **Subtotal:** quantidade (2 casas) × preço unitário (2 casas), levado a 3 casas e depois a 2. O total é a soma dos subtotais arredondados.
 
 | Valor calculado | Valor com 3 casas | Valor gravado e exibido | Motivo |
 | --- | --- | --- | --- |
@@ -85,24 +88,28 @@ Os usuários são cadastrados pelo Admin. Não há autocadastro. Só o Admin alt
 | 43,209 | 43,209 | R$ 43,21 | 3ª casa = 9, sobe |
 | 43,205 | 43,205 | R$ 43,20 | 3ª casa = 5, desce |
 | 43,201 | 43,201 | R$ 43,20 | 3ª casa = 1, desce |
-| 9,57375 | 9,574 | R$ 9,57 | 4ª casa = 7, vira 9,574; depois 3ª casa = 4, desce |
+| Subtotal: 0,35 × R$ 27,35 = 9,5725 | 9,573 | R$ 9,57 | 4ª casa = 5, vira 9,573; depois 3ª casa = 3, desce |
 | Quantidade: 10 min em h = 0,16666… | 0,167 h | 0,17 h | 4ª casa = 6, vira 0,167; depois 3ª casa = 7, sobe |
-| Subtotal: 0,167 h × R$ 85,00 = 14,195 | 14,195 | R$ 14,19 | Cálculo usa a quantidade com 3 casas; 3ª casa = 5, desce |
+| Subtotal: 0,17 h × R$ 85,00 = 14,45 | 14,450 | R$ 14,45 | O cálculo usa a quantidade exibida (0,17 h) |
+| Área: 33 cm × 33 cm = 0,1089 m² | 0,109 m² | 0,11 m² | 4ª casa = 9, vira 0,109; depois 3ª casa = 9, sobe |
 
-- **RN09 — Correspondência com o catálogo.** O Backend compara cada termo da descrição com o nome de cada material ativo pela **distância de Levenshtein normalizada**:
-    - Os dois textos são normalizados antes: minúsculas, sem acentos e com espaços extras removidos.
-    - Similaridade = 1 − (distância de Levenshtein ÷ tamanho do maior dos dois textos).
-    - Vale o material de maior similaridade.
+- **RN09 — Correspondência com o catálogo.** A correspondência entre o termo da descrição e o material é feita em dois passos.
+    - **Passo 1 — Similaridade (determinístico).** O Backend compara cada termo com o **nome e com cada sinônimo** de cada material ativo, pela **distância de Levenshtein normalizada**:
+        - Os textos são normalizados antes: minúsculas, sem acentos e com espaços extras removidos.
+        - Similaridade = 1 − (distância de Levenshtein ÷ tamanho do maior dos dois textos).
+        - Vale o maior resultado entre o nome e os sinônimos, e o material de maior similaridade.
+    - **Passo 2 — Sugestão do agente.** Só para os termos que ficaram abaixo de 80% no passo 1. O LLM recebe a lista de materiais ativos e pode sugerir **um** material com o mesmo sentido do termo. A sugestão nunca é usada direto: sempre vira uma pergunta de confirmação ao cliente. Se o LLM não sugerir nada, o termo é um item não encontrado.
 
-| Similaridade do material mais próximo | Resultado |
+| Resultado | O que acontece |
 | --- | --- |
-| 100% | O material é usado na cotação |
-| De 80% a menos de 100% (incerteza de até 20%) | O agente pergunta ao cliente se o material mais próximo é o correto: erro `422` com `code = ESCLARECIMENTO_NECESSARIO` e as sugestões |
-| Abaixo de 80% | Item não encontrado (RN03) |
+| Passo 1 com 100% | O material é usado na cotação |
+| Passo 1 de 80% a menos de 100% (incerteza de até 20%) | O agente pergunta se o material mais próximo é o correto: erro `422` com `code = ESCLARECIMENTO_NECESSARIO` e as sugestões (`origem = similaridade`) |
+| Passo 1 abaixo de 80%, com sugestão do agente | O agente pergunta se o material sugerido é o correto: erro `422` com `code = ESCLARECIMENTO_NECESSARIO` e as sugestões (`origem = agente`) |
+| Passo 1 abaixo de 80%, sem sugestão do agente | Item não encontrado (RN03) |
 
-Um material que o cliente confirma na conversa passa a valer como correspondência de 100% para aquele termo, naquele projeto.
+Um material que o cliente confirma na conversa passa a valer como correspondência de 100% para aquele termo, naquele projeto. No passo 2, o LLM não define preço nem quantidade e só pode sugerir materiais da lista recebida.
 
-- **RN10 — Cadastro de material.** Nome, tipo (`material` ou `servico`), categoria (texto livre), unidade, preço unitário e fornecedor são obrigatórios. O preço unitário tem **2 casas decimais**. O nome é único no catálogo inteiro, incluindo materiais inativos, sem diferenciar maiúsculas e acentos.
+- **RN10 — Cadastro de material.** Nome, tipo (`material` ou `servico`), categoria (texto livre), unidade, preço unitário e fornecedor são obrigatórios. Sinônimos são opcionais. O preço unitário tem **2 casas decimais**. O nome é único no catálogo inteiro, incluindo materiais inativos, sem diferenciar maiúsculas e acentos. Um sinônimo não pode repetir o nome nem o sinônimo de outro material, com a mesma comparação; se repetir, o cadastro retorna `409`.
 - **RN11 — Projeto arquivado.** Projeto arquivado é somente leitura. Qualquer tentativa de alterá-lo ou de enviar mensagem retorna `422` com `code = PROJETO_ARQUIVADO` e a mensagem "Este projeto está inativo."
 - **RN12 — Falha no processamento.** Se o agente ou o LLM falhar, o sistema retorna `500` com `code = FALHA_PROCESSAMENTO` e a mensagem "Não foi possível processar essa mensagem no momento, favor contate o administrador". O projeto continua no estado anterior.
 
@@ -144,6 +151,7 @@ erDiagram
     MATERIAL {
         ObjectId id PK
         string nome
+        string[] sinonimos
         string tipo "material|servico"
         string categoria
         string unidade "m|m2|un|L|h"
@@ -225,8 +233,11 @@ Material a confirmar ou medida faltando (evento `erro`):
   "title": "Esclarecimento necessário",
   "status": 422,
   "code": "ESCLARECIMENTO_NECESSARIO",
-  "pergunta": "Você quis dizer \"Película refletiva\" para \"película reflexiva\"?",
-  "sugestoes": [{ "termo": "película reflexiva", "materialId": "6703e0aa01", "nome": "Película refletiva", "similaridade": 0.94 }],
+  "pergunta": "Você quis dizer \"Película refletiva\" para \"película reflexiva\" e \"Suporte em L de aço\" para \"cantoneira\"?",
+  "sugestoes": [
+    { "termo": "película reflexiva", "materialId": "6703e0aa01", "nome": "Película refletiva", "origem": "similaridade", "similaridade": 0.94 },
+    { "termo": "cantoneira", "materialId": "6703e0aa07", "nome": "Suporte em L de aço", "origem": "agente", "similaridade": null }
+  ],
   "projetoId": "6703f1c2a9"
 }
 ```
@@ -248,13 +259,13 @@ Falha de processamento (evento `erro`):
 | Questão | Decisão (04/10/2026) |
 | --- | --- |
 | A cotação inclui margem de lucro e impostos? | Não. Apenas o custo dos materiais (RN01) |
-| Precisão dos valores | Gravados e exibidos com 2 casas; cálculo com 3 casas (RN08) |
+| Precisão dos valores | Gravados e exibidos com 2 casas; cálculo com 3 casas; a quantidade entra no cálculo já com 2 casas, igual à exibida (RN08) |
 | Regra de arredondamento de 3 para 2 casas | 3ª casa maior que 5 arredonda para cima; 5 ou menor, para baixo. Vale para reais e quantidades (RN08) |
 | Valor com mais de 3 casas | Arredondamento comum para 3 casas antes da regra da 3ª casa (RN08) |
 | Prazo de retenção do histórico de conversas | Não aplicado; fora do escopo deste projeto |
 | Quem calcula área e conversão de unidades | O Serviço de Precificação; o LLM só extrai medidas e unidades (RN05) |
 | O que o refinamento pode alterar | Quantidades e inclusão, remoção ou troca de materiais, só pela conversa com o agente. Nunca o preço de um material (RN02) |
-| Como associar termo e material | Levenshtein normalizado: 100% usa, de 80% a menos de 100% confirma com o cliente, abaixo de 80% não encontrado (RN09) |
+| Como associar termo e material | Levenshtein normalizado sobre nome e sinônimos: 100% usa, de 80% a menos de 100% confirma; abaixo de 80%, o agente pode sugerir um material, sempre com confirmação do cliente; sem sugestão, não encontrado (RN09) |
 | O que o cliente vê dos materiais | Os dados dos materiais na tela de cotação; não acessa a tela de cadastro nem altera a base (§3) |
 | Resposta quando falta medida ou há material a confirmar | `422 ESCLARECIMENTO_NECESSARIO` (RN06, RN09) |
 | Cadastro de material | Tipo, categoria livre, fornecedor obrigatório, preço com 2 casas, nome único incluindo inativos, reativação permitida (RN10) |

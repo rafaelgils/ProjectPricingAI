@@ -1,7 +1,7 @@
 # Plano de execução — Sistema de Cotação de Projetos
 
-> Versão 0.3 · 04/10/2026
-> Baseado em `.ai/architecture.md`, `.ai/business-rules.md`, `.ai/standards.md` e `.ai/tech-stack.md` (todos na v0.7, já com as respostas das dúvidas D1 a D25 e dos pontos Q1 a Q8).
+> Versão 0.4 · 04/10/2026
+> Baseado em `.ai/architecture.md`, `.ai/business-rules.md`, `.ai/standards.md` e `.ai/tech-stack.md` (todos na v0.8, já com as respostas das dúvidas D1 a D25 e dos pontos Q1 a Q11).
 > O desenvolvimento é feito por IA. Por isso o plano não traz equipe nem datas: cada fase vira um ou mais Pull Requests, revisados e aprovados por uma pessoa.
 > Quando a documentação não define um ponto, o plano adota uma **premissa (P#)**. Os pontos que ainda dependem de resposta estão na seção 8 (**Q#**).
 
@@ -42,7 +42,7 @@ Entregar a **release 1.0.0 (MVP)** rodando localmente com `docker compose up`, e
 | P7 | Portas locais: Frontend `http://localhost:3000`, Kong `http://localhost:8000` e Keycloak `http://localhost:8080`. Backend e MongoDB não publicam portas | Arquitetura §1.1 |
 | P8 | Chave fixa do realm (ADR-010): o par RSA é gerado por um script com `openssl`. A chave privada fica no `.env` e entra no realm por *placeholder* na importação. A chave pública, que não é segredo, fica versionada no `kong.yml` | Nenhum segredo no Git nem na imagem |
 | P9 | A similaridade da RN09 (Levenshtein normalizado) é calculada em memória sobre os materiais ativos, sem índice de busca no MongoDB | Volume de catálogo pequeno no MVP |
-| P10 | O prompt de sistema orienta o LLM a usar, como termo de busca, as palavras do próprio cliente para cada item | RN09 compara o termo com o nome do material. Ver Q9 |
+| P10 | O prompt de sistema orienta o LLM a usar, como termo de busca, as palavras do próprio cliente para cada item | A RN09 compara o termo com o nome e os sinônimos do material; trocas de sentido ficam para o passo 2, sempre com confirmação |
 
 ## 3. Estrutura do repositório
 
@@ -175,14 +175,15 @@ Cada fase termina em PRs `feature/<id>-<descricao>`, com *squash merge*, Convent
 - `FluentValidation`:
   - Nome, tipo (`material` ou `servico`), categoria (texto livre), unidade (`m|m2|un|L|h`) e fornecedor são obrigatórios.
   - `precoUnitario > 0` com no máximo **2 casas**.
-- Nome duplicado (sem diferenciar maiúsculas e acentos, incluindo inativos) retorna `409`.
+  - `sinonimos` opcional: lista de textos não vazios, sem repetição no próprio material.
+- Nome ou sinônimo duplicado retorna `409`: a comparação não diferencia maiúsculas e acentos, inclui inativos e cruza nomes com sinônimos de outros materiais (RN10).
 - `DELETE` inativa o material. `POST` responde `201` com `Location`. `atualizadoEm` muda a cada alteração.
 - Meta de desempenho: p95 de até 500 ms.
 
 **Critério de aceite:**
 - Fluxo 5.2 da arquitetura funcionando.
 - Cliente externo recebe `403`.
-- Testes do `MaterialService` e dos validadores passam, incluindo os casos de duplicidade (maiúsculas, acentos, inativo) e de reativação.
+- Testes do `MaterialService` e dos validadores passam, incluindo os casos de duplicidade (maiúsculas, acentos, inativo, nome × sinônimo) e de reativação.
 
 ### F5 — Serviço de Precificação (RN01, RN05, RN08)
 
@@ -193,17 +194,18 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
   - `ParaCalculo(decimal)`: `Math.Round(valor, 3, MidpointRounding.AwayFromZero)`.
   - `ParaGravacao(decimal)`: de 3 para 2 casas, com o limiar `LimiarArredondamento = 6` na 3ª casa. Vale para reais e quantidades.
 - `ServicoPrecificacao.Calcular(itens)`:
-  - Para cada item: converte a unidade e leva a quantidade a 3 casas.
-  - Calcula `quantidade (3 casas) × precoUnitarioSnapshot`, leva o resultado a 3 casas e depois a 2 casas, que é o subtotal.
-  - Grava a quantidade com 2 casas.
+  - Para cada item: converte a unidade (ou calcula a área), leva a quantidade a 3 casas (`ParaCalculo`) e depois a 2 casas (`ParaGravacao`).
+  - Calcula `quantidade (2 casas) × precoUnitarioSnapshot`, leva o resultado a 3 casas e depois a 2 casas, que é o subtotal. Assim o cálculo usa a mesma quantidade que é gravada e exibida.
   - Total = soma dos subtotais com 2 casas.
   - Sem margem e sem impostos.
 - Recálculo no refinamento: só os itens alterados, incluídos ou trocados são recalculados; os demais mantêm o subtotal gravado (RN02).
 - Testes:
-  - Os 7 casos da tabela RN08, incluindo:
-    - 9,57375 → R$ 9,57.
-    - 10 min → 0,167 h no cálculo e 0,17 h na gravação.
-    - 0,167 h × R$ 85,00 → R$ 14,19.
+  - Os 8 casos da tabela RN08, incluindo:
+    - 0,35 × R$ 27,35 → R$ 9,57.
+    - 10 min → 0,17 h.
+    - 0,17 h × R$ 85,00 → R$ 14,45.
+    - 33 × 33 cm → 0,11 m².
+  - Para cada item calculado, `quantidade exibida × preço exibido` reproduz o subtotal exibido pela RN08.
   - O exemplo da placa: 60 × 60 cm → 0,36 m², e total de R$ 105,90.
   - Cada linha da tabela RN05.
   - Unidade incompatível gera exceção.
@@ -215,7 +217,9 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
 
 **Servidor MCP** (P2). As tools chamam serviços de domínio, nunca o banco:
 
-- `buscarMateriais(termos[])` devolve, para cada termo, o material ativo mais próximo e a similaridade pelo Levenshtein normalizado da RN09, implementado no Backend sem biblioteca externa (P9). Cada termo é classificado em `encontrado` (100%), `aConfirmar` (de 80% a menos de 100%) ou `naoEncontrado` (abaixo de 80%), usando a constante `LimiarSimilaridade = 0.80`.
+- `buscarMateriais(termos[])` devolve, para cada termo, o material ativo mais próximo e a similaridade (passo 1 da RN09).
+  - Usa o Levenshtein normalizado sobre o nome **e os sinônimos**, implementado no Backend sem biblioteca externa (P9).
+  - Classifica cada termo em `encontrado` (100%), `aConfirmar` (de 80% a menos de 100%) ou `semCorrespondencia` (abaixo de 80%), com a constante `LimiarSimilaridade = 0.80`.
 - `calcular(itens[])` chama o `ServicoPrecificacao`.
 - `salvarProjeto(projetoId, itens, total)` grava o snapshot, muda o status para `cotado` e atualiza `alteradoEm`.
 
@@ -234,19 +238,27 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
    - O `materialId`, que precisa ter vindo de `buscarMateriais` nesta rodada ou de uma confirmação anterior na conversa.
    - Se a unidade é conversível.
    - Se a quantidade é maior que zero.
-4. Decide, nesta ordem:
+4. **Passo 2 da RN09:** para os termos `semCorrespondencia`, faz uma chamada à parte ao LLM.
+   - Envia a lista de materiais ativos (id, nome, categoria e unidade) e os termos.
+   - Exige a saída `{ termo, materialId | null }[]`.
+   - Um `materialId` fora da lista é descartado.
+   - Termo com sugestão válida passa a `aConfirmar` (`origem = agente`); sem sugestão, vira `naoEncontrado`.
+5. Decide, nesta ordem:
    1. Algum termo `naoEncontrado` → `ITENS_NAO_ENCONTRADOS`, sem valor parcial (RN03).
-   2. Algum termo `aConfirmar` (sem confirmação anterior) → `ESCLARECIMENTO_NECESSARIO` com as `sugestoes` (RN09).
+   2. Algum termo `aConfirmar` (por similaridade ou sugestão do agente, sem confirmação anterior) → `ESCLARECIMENTO_NECESSARIO` com as `sugestoes` e a `origem` de cada uma (RN09).
    3. Tipo `esclarecimento` (falta medida) → `ESCLARECIMENTO_NECESSARIO` com a `pergunta` (RN06).
    4. Caso contrário, chama `calcular` e depois `salvarProjeto` pelo código.
-5. Se o LLM falhar, der *timeout* ou devolver saída inválida duas vezes → `FALHA_PROCESSAMENTO` (500). O projeto continua no estado anterior (RN12).
-6. Grava todas as mensagens na conversa, inclusive as confirmações de material.
+6. Se o LLM falhar, der *timeout* ou devolver saída inválida duas vezes → `FALHA_PROCESSAMENTO` (500). O projeto continua no estado anterior (RN12).
+7. Grava todas as mensagens na conversa, inclusive as sugestões e as confirmações de material.
 
 **Testes unitários** (Moq no `IChatClient` e nos repositórios):
 
 - Fluxo feliz.
 - Termo não encontrado.
 - Termo a confirmar, e depois confirmado.
+- Termo encontrado por sinônimo ("placa" → "Chapa de aço galvanizado" com 100%).
+- Sugestão do agente: válida (vira confirmação), `materialId` fora da lista (descartado) e sem sugestão (não encontrado).
+- Sugestão do agente nunca entra na cotação sem confirmação.
 - Precedência entre não encontrado e a confirmar.
 - Medida faltando.
 - Saída inválida e falha do LLM.
@@ -254,6 +266,7 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
 - `calcular` e `salvarProjeto` nunca oferecidos ao LLM.
 - Testes da função de similaridade:
   - Normalização (maiúsculas, acentos e espaços).
+  - Maior resultado entre o nome e os sinônimos.
   - O exemplo "película reflexiva" × "Película refletiva" ≈ 94%.
   - Os limites 79,9%, 80% e 100%.
 
@@ -300,14 +313,14 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
   - `@tanstack/react-query`.
   - `env.js` para a configuração (P5).
 - Telas:
-  - **Catálogo** (admin e cliente-interno; o cliente externo não tem acesso): lista paginada e filtros. Só o Admin vê o formulário (`react-hook-form` + `zod`) com tipo, categoria, unidade, preço com 2 casas e fornecedor, e as ações de inativar e reativar.
+  - **Catálogo** (admin e cliente-interno; o cliente externo não tem acesso): lista paginada e filtros. Só o Admin vê o formulário (`react-hook-form` + `zod`) com sinônimos (lista editável), tipo, categoria, unidade, preço com 2 casas e fornecedor, e as ações de inativar e reativar.
   - Os dados dos materiais aparecem para todos os papéis na tela de cotação (itens e sugestões).
   - **Projetos:** lista, abertura (somente leitura se arquivado) e arquivamento.
   - **Cotação / chat:**
     - Descrição e resposta em streaming.
     - Tabela de itens com subtotais e total.
     - Lista destacada de itens não encontrados.
-    - Botões para confirmar as `sugestoes` de material, que enviam a confirmação como mensagem.
+    - Botões para confirmar as `sugestoes` de material, que enviam a confirmação como mensagem. Uma sugestão do agente aparece identificada como "sugerido pelo assistente", e uma por similaridade mostra a porcentagem.
     - Perguntas de esclarecimento.
     - Mensagem fixa em caso de falha (RN12).
 - Moeda com `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })` e quantidades com 2 casas, sempre exibindo os valores que a API devolve, sem recalcular no navegador.
@@ -319,7 +332,7 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
 - Dockerfiles *multi-stage*, com imagens base oficiais, tags fixas e usuário não-root.
 - Nenhum segredo na imagem: tudo vem do `.env` local.
 - Imagens `frontend` e `backend` geradas com tag semver e mantidas no Docker da máquina (sem registro).
-- Segredos fora do ambiente local: AWS KMS. Fica fora do escopo enquanto só existir o ambiente local.
+- Segredos fora do ambiente local: AWS Secrets Manager, com a chave da Claude API, as senhas do MongoDB e do Keycloak e a chave privada do realm. Os nomes das variáveis do `.env.example` já devem corresponder aos segredos que irão para o Secrets Manager, para a migração ser só de origem. A integração fica fora do escopo enquanto só existir o ambiente local.
 - Rotina de backup do volume do MongoDB (`mongodump`) documentada (ADR-009).
 - Logs estruturados sem a chave da API e sem tokens.
 - Revisão de prompt injection: a descrição nunca altera preço, porque o preço só vem do catálogo congelado.
@@ -332,7 +345,8 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
 
 ### F11 — Suíte de regressão, aceite e release 1.0.0
 
-- **Catálogo de referência:** materiais com preços de exemplo pesquisados na internet durante o desenvolvimento e fixados no repositório.
+- **Catálogo de referência:** materiais com preços de exemplo pesquisados na internet durante o desenvolvimento e fixados no repositório, já com os sinônimos mais comuns.
+- As 30 descrições cobrem também os casos de sinônimo, de confirmação por similaridade e de sugestão do agente.
 - **30 descrições de referência**, cada uma com a resposta fixa do *mock* do LLM e o valor esperado. Rodam como testes unitários (`standards.md` §6 e §7).
 - Demonstração dos critérios de aceite ao PO.
 - OpenAPI e guias de usuário revisados.
@@ -381,8 +395,9 @@ Trabalhos que podem andar em paralelo:
 | RN04 Exclusão lógica | F4, F7 | Inativação, reativação e arquivamento |
 | RN05 Unidades | F5 | Teste de cada linha da tabela |
 | RN07 Visibilidade | F3, F7 | `404` para projeto de outro cliente |
-| RN08 Precisão e arredondamento | F5 | Os 7 casos da tabela RN08; valores gravados com 2 casas |
-| RN09 Similaridade | F6 | Levenshtein normalizado e limites de 80% e 100% |
+| RN08 Precisão e arredondamento | F5 | Os 8 casos da tabela RN08; valores gravados com 2 casas; conta de cada item reproduzível com os valores exibidos |
+| RN09 Correspondência | F4, F6 | Levenshtein sobre nome e sinônimos; limites de 80% e 100%; sugestão do agente sempre com confirmação |
+| RN10 Cadastro | F4 | Duplicidade de nome e sinônimo |
 | RN11 Arquivado | F7 | `422 PROJETO_ARQUIVADO` |
 | RN12 Falha | F6 | `500 FALHA_PROCESSAMENTO` com a mensagem fixa |
 | RNF01 Segurança | F2, F3, F9 | JWT no Kong e no Backend; segredos fora da imagem |
@@ -394,7 +409,9 @@ Trabalhos que podem andar em paralelo:
 
 | Risco | Impacto | Mitigação |
 | --- | --- | --- |
-| O Levenshtein compara letras, não significado: "tinta reflexiva" × "Película refletiva" dá 61%, e "placa" × "Chapa de aço galvanizado" dá 17% | Muitos itens não encontrados quando o cliente usa outras palavras | Nomes de materiais claros no catálogo; decidir Q9 |
+| O Levenshtein compara letras, não significado: sem sinônimo, "placa" × "Chapa de aço galvanizado" dá 17% | Muitas confirmações ou itens não encontrados | Sinônimos cadastrados pelo Admin e sugestão do agente com confirmação (RN09) |
+| Sinônimos mal cadastrados (ou ausentes) | Mais chamadas ao LLM no passo 2 e mais perguntas ao cliente | O catálogo de referência da F11 já vem com sinônimos; revisar os termos que mais caem no passo 2 |
+| A sugestão do agente envia a lista inteira de materiais ativos ao LLM | Custo e latência maiores com catálogo grande | Aceitável no MVP; filtrar por categoria se o catálogo crescer |
 | A suíte de regressão usa *mock* do LLM, então não mede o efeito real de mudanças no prompt | Uma regressão de prompt só aparece no uso real | Risco aceito no MVP |
 | Sem CI, as verificações dependem de rodar o `verificar.sh` | Um PR pode entrar sem cobertura ou com aviso | DoD exige anexar a saída do `verificar.sh` ao PR |
 | Chave fixa do realm (ADR-010) | Rotação manual | Script de geração e procedimento documentado |
@@ -404,10 +421,8 @@ Trabalhos que podem andar em paralelo:
 
 ## 8. Pontos em aberto
 
-Os pontos Q1 a Q8 foram respondidos e estão nos documentos `.ai` v0.7. Restam três pontos, que surgiram dessas respostas.
+Não há pontos em aberto. As respostas de D1 a D25 e de Q1 a Q11 estão nos documentos `.ai` v0.8. As últimas três foram:
 
-| ID | Ponto | Fase | Proposta do plano |
-| --- | --- | --- | --- |
-| **Q9** | O Levenshtein compara o termo com o nome do material letra a letra. Se o LLM usar as palavras do cliente (P10), sinônimos ficam abaixo de 80% e viram "não encontrado". Se o LLM receber a lista de nomes do catálogo, ele mesmo escolhe o nome exato, e a faixa de confirmação (80–99%) quase nunca acontece. Qual comportamento é o desejado? | F6 | Usar as palavras do cliente (P10), mantendo a confirmação como a RN09 descreve, e cadastrar nomes claros no catálogo |
-| **Q10** | Com quantidade gravada em 2 casas e cálculo em 3, o cliente pode ver uma conta que não fecha. Exemplo: 0,17 h × R$ 85,00 aparece na tela, mas o subtotal é R$ 14,19 (calculado com 0,167 h), e não R$ 14,45. Isso é aceitável? | F5, F8 | Aceitar e mostrar uma nota na tela de cotação de que as quantidades exibidas estão arredondadas |
-| **Q11** | O AWS KMS gerencia chaves de criptografia; ele não guarda segredos (senhas, chave da Claude API) por si só. Para guardar segredos, o comum é o AWS Secrets Manager ou o Parameter Store, que usam o KMS por baixo | F9 | Sem impacto agora, porque só existe o ambiente local com `.env`. Revisar quando houver outro ambiente |
+- **Q9:** sinônimos no material e sugestão do agente com confirmação (RN09 e RN10).
+- **Q10:** quantidade levada a 2 casas antes do cálculo (RN08).
+- **Q11:** AWS Secrets Manager para os segredos fora do ambiente local.

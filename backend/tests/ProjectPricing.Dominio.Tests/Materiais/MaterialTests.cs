@@ -42,6 +42,58 @@ public class MaterialTests
             nome, [], TipoMaterial.Servico, categoria, UnidadeMedida.Hora, 10m, fornecedor, Agora));
     }
 
+    [Fact]
+    public void Alterar_troca_os_dados_e_a_data_sem_mudar_o_status()
+    {
+        var material = NovoMaterial();
+        material.Inativar(Agora.AddHours(1));
+
+        material.Alterar(" Película premium ", ["película"], TipoMaterial.Material, "Sinalização",
+            UnidadeMedida.MetroQuadrado, 99.90m, "Outro", Agora.AddHours(2));
+
+        Assert.Equal("Película premium", material.Nome);
+        Assert.Equal(["película"], material.Sinonimos);
+        Assert.Equal(99.90m, material.PrecoUnitario);
+        Assert.Equal("Outro", material.Fornecedor);
+        Assert.Equal(StatusMaterial.Inativo, material.Status);
+        Assert.Equal(Agora.AddHours(2), material.AtualizadoEm);
+    }
+
+    [Fact]
+    public void Alterar_valida_como_no_cadastro()
+    {
+        var material = NovoMaterial();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => material.Alterar(
+            "Nome", [], TipoMaterial.Material, "C", UnidadeMedida.Unidade, 0m, "F", Agora));
+    }
+
+    [Fact]
+    public void Inativar_e_reativar_registram_a_data()
+    {
+        var material = NovoMaterial();
+
+        material.Inativar(Agora.AddDays(1));
+        Assert.Equal(StatusMaterial.Inativo, material.Status);
+        Assert.Equal(Agora.AddDays(1), material.AtualizadoEm);
+
+        material.Reativar(Agora.AddDays(2));
+        Assert.Equal(StatusMaterial.Ativo, material.Status);
+        Assert.Equal(Agora.AddDays(2), material.AtualizadoEm);
+    }
+
+    [Fact]
+    public void Nome_e_sinonimos_sao_os_termos_unicos_do_material()
+    {
+        var material = new Material("Chapa", ["placa", "lâmina"], TipoMaterial.Material, "C",
+            UnidadeMedida.MetroQuadrado, 1m, "F", Agora);
+
+        Assert.Equal(["Chapa", "placa", "lâmina"], material.NomeESinonimos);
+    }
+
+    private static Material NovoMaterial() =>
+        new("Película refletiva", [], TipoMaterial.Material, "Sinalização", UnidadeMedida.MetroQuadrado, 95m, "Refletivos", Agora);
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

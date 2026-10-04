@@ -20,12 +20,12 @@ public abstract class RepositorioMongo<TEntidade>
 
     protected IMongoCollection<TEntidade> Colecao { get; }
 
-    public Task InserirAsync(TEntidade entidade, CancellationToken cancellationToken)
+    public virtual Task InserirAsync(TEntidade entidade, CancellationToken cancellationToken)
     {
         return Colecao.InsertOneAsync(entidade, options: null, cancellationToken);
     }
 
-    public Task AtualizarAsync(TEntidade entidade, CancellationToken cancellationToken)
+    public virtual Task AtualizarAsync(TEntidade entidade, CancellationToken cancellationToken)
     {
         var id = _obterId(entidade)
             ?? throw new InvalidOperationException($"{typeof(TEntidade).Name} sem id não pode ser atualizado.");

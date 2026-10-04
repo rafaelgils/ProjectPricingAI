@@ -28,16 +28,25 @@ public static class ProjetosEndpoints
             .Validar<ConsultaProjetos>()
             .WithSummary("Lista os projetos: os próprios para clientes, todos para o Admin");
 
-        projetos.MapGet("/{id}", Obter).WithSummary("Detalhe do projeto com os itens");
+        projetos.MapGet("/{id}", Obter)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("Detalhe do projeto com os itens");
 
-        projetos.MapDelete("/{id}", Arquivar).WithSummary("Arquiva o projeto (exclusão lógica)");
+        projetos.MapDelete("/{id}", Arquivar)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("Arquiva o projeto (exclusão lógica)");
 
         projetos.MapPost("/{id}/mensagens", EnviarMensagem)
             .Validar<EnviarMensagemRequisicao>()
             .Produces(StatusCodes.Status200OK, contentType: EscritorSse.TipoConteudo)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .WithSummary("Mensagem de refinamento; resposta em SSE");
 
-        projetos.MapGet("/{id}/mensagens", Historico).WithSummary("Histórico da conversa");
+        projetos.MapGet("/{id}/mensagens", Historico)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithSummary("Histórico da conversa");
 
         return api;
     }

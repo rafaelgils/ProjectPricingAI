@@ -20,6 +20,8 @@ public static class UsuariosEndpoints
             .WithName("ObterPerfilDoUsuarioLogado")
             .WithSummary("Perfil e papéis do usuário logado");
 
+        usuarios.MapearGestaoDeUsuarios();
+
         return api;
     }
 

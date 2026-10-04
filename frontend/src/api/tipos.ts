@@ -101,3 +101,32 @@ export type EventoConversa =
   | { tipo: 'cotacao'; dados: Projeto }
   | { tipo: 'erro'; dados: Problema }
   | { tipo: 'fim'; dados: { projetoId: string; status: StatusProjeto } };
+
+/** Usuário gerenciado pelo Admin (RF10); a fonte é o Keycloak (ADR-004). */
+export interface Usuario {
+  id: string;
+  usuario: string;
+  nome: string;
+  sobrenome: string;
+  email: string | null;
+  papel: Papel | null;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export interface DadosNovoUsuario {
+  usuario: string;
+  nome: string;
+  sobrenome: string;
+  email: string;
+  papel: Papel;
+  senhaTemporaria: string;
+}
+
+export interface DadosAlteracaoUsuario {
+  nome: string;
+  sobrenome: string;
+  email: string;
+  papel: Papel;
+  ativo: boolean;
+}

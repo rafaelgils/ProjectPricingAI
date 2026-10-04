@@ -21,20 +21,25 @@ public static class MateriaisEndpoints
 
         materiais.MapGet("/{id}", Obter)
             .RequireAuthorization(Politicas.PodeConsultarCatalogo)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .WithSummary("Detalhe do material");
 
         materiais.MapPost("/", Criar)
             .RequireAuthorization(Politicas.PodeGerenciarCatalogo)
             .Validar<CriarMaterialRequisicao>()
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .WithSummary("Cadastra material ou serviço");
 
         materiais.MapPut("/{id}", Alterar)
             .RequireAuthorization(Politicas.PodeGerenciarCatalogo)
             .Validar<AlterarMaterialRequisicao>()
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .WithSummary("Altera ou reativa o material; não afeta cotações emitidas");
 
         materiais.MapDelete("/{id}", Inativar)
             .RequireAuthorization(Politicas.PodeGerenciarCatalogo)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .WithSummary("Inativa o material (exclusão lógica)");
 
         return api;

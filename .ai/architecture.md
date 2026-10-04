@@ -1,6 +1,6 @@
 # Arquitetura e decisões (ADRs)
 
-> Sistema de Cotação de Projetos · versão 0.10 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.11 · 04/10/2026
 > Visão de alto nível, atributos de qualidade e registro das decisões de arquitetura.
 
 ## 1. Visão geral
@@ -221,7 +221,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | POST | /api/v1/projetos/{id}/mensagens | Dono | Mensagem de refinamento (quantidades e inclusão, remoção ou troca de materiais; nunca preço); resposta em SSE; `422` se o projeto estiver arquivado |
 | GET | /api/v1/projetos/{id}/mensagens | Dono, Admin | Histórico da conversa |
 | GET | /api/v1/usuarios/me | Todos | Perfil e papéis do usuário logado |
-| GET, POST, PUT, DELETE | /api/v1/usuarios[/{id}] | Admin | Repasse à Keycloak Admin API |
+| GET, POST, PUT, DELETE | /api/v1/usuarios[/{id}] | Admin | Repasse à Keycloak Admin API. O `DELETE` só desativa o usuário, e o Admin não pode se desativar nem tirar o próprio papel `admin` |
 
 Não existe `PUT /api/v1/projetos/{id}`: o projeto só é alterado pela conversa com o agente (RN02).
 

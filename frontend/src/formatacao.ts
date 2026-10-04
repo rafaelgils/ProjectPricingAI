@@ -1,4 +1,4 @@
-import type { StatusMaterial, StatusProjeto, UnidadeMedida } from './api/tipos.ts';
+import type { Papel, StatusMaterial, StatusProjeto, UnidadeMedida } from './api/tipos.ts';
 
 // standards.md §4: valores em reais sempre com Intl.NumberFormat pt-BR / BRL.
 const formatoMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -35,3 +35,14 @@ export const nomeStatusProjeto = (status: StatusProjeto): string => NOMES_STATUS
 
 export const nomeStatusMaterial = (status: StatusMaterial): string =>
   status === 'ativo' ? 'Ativo' : 'Inativo';
+
+const NOMES_PAPEL: Record<Papel, string> = {
+  admin: 'Admin',
+  'cliente-interno': 'Cliente interno',
+  'cliente-externo': 'Cliente externo',
+};
+
+export const PAPEIS: Papel[] = ['admin', 'cliente-interno', 'cliente-externo'];
+
+export const nomePapel = (papel: Papel | null): string =>
+  papel ? NOMES_PAPEL[papel] : 'Sem papel';

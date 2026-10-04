@@ -16,6 +16,7 @@ using ProjectPricing.Aplicacao.Projetos;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Precificacao;
 using ProjectPricing.Infraestrutura;
+using ProjectPricing.Infraestrutura.Keycloak;
 using ProjectPricing.Infraestrutura.Llm;
 using ProjectPricing.Infraestrutura.Mongo;
 
@@ -42,11 +43,24 @@ builder.Services.AddSingleton<IValidator<ConsultaMateriais>, ConsultaMateriaisVa
 builder.Services.AddSingleton<IValidator<CriarProjetoRequisicao>, CriarProjetoValidador>();
 builder.Services.AddSingleton<IValidator<EnviarMensagemRequisicao>, EnviarMensagemValidador>();
 builder.Services.AddSingleton<IValidator<ConsultaProjetos>, ConsultaProjetosValidador>();
+builder.Services.AddSingleton<IValidator<CriarUsuarioRequisicao>, CriarUsuarioValidador>();
+builder.Services.AddSingleton<IValidator<AlterarUsuarioRequisicao>, AlterarUsuarioValidador>();
+builder.Services.AddSingleton<IValidator<ConsultaUsuarios>, ConsultaUsuariosValidador>();
 
 builder.Services.AdicionarAutenticacaoKeycloak(builder.Configuration);
 builder.Services.AdicionarPoliticasDeAutorizacao();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
+builder.Services.AddScoped<ServicoUsuarios>();
+// Gestão de usuários (RF10): repasse à Keycloak Admin API com a service account precificacao-admin.
+builder.Services.AdicionarKeycloakAdmin(new OpcoesKeycloakAdmin
+{
+    UrlRealm = builder.Configuration["Keycloak:UrlInterna"] is { Length: > 0 } urlInterna
+        ? urlInterna
+        : builder.Configuration["Keycloak:UrlPublica"] ?? string.Empty,
+    ClientId = builder.Configuration["Keycloak:AdminClientId"] ?? "precificacao-admin",
+    ClientSecret = builder.Configuration["Keycloak:AdminClientSecret"],
+});
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ServicoCatalogo>();
@@ -83,7 +97,11 @@ app.MapHealthChecks("/health").AllowAnonymous();
 // Servidor MCP só na rede interna: o Kong não roteia /mcp (ADR-006).
 app.MapMcp("/mcp").RequireAuthorization(Politicas.PodeCotar);
 
+// Erros comuns a todas as rotas, em Problem Details (standards.md §5).
 app.MapGroup("/api/v1")
+    .ProducesProblem(StatusCodes.Status401Unauthorized)
+    .ProducesProblem(StatusCodes.Status403Forbidden)
+    .ProducesProblem(StatusCodes.Status500InternalServerError)
     .MapearUsuarios()
     .MapearMateriais()
     .MapearProjetos();

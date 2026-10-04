@@ -90,6 +90,18 @@ public class MapeadorDeErrosTests
     }
 
     [Fact]
+    public void Erros_da_gestao_de_usuarios()
+    {
+        var duplicado = MapeadorDeErros.Mapear(new UsuarioDuplicadoException());
+        var proprio = MapeadorDeErros.Mapear(new AlteracaoDoProprioUsuarioException());
+
+        Assert.Equal(409, duplicado.Status);
+        Assert.Equal("USUARIO_DUPLICADO", duplicado.Extensions["code"]);
+        Assert.Equal(422, proprio.Status);
+        Assert.Equal("ALTERACAO_PROPRIO_USUARIO", proprio.Extensions["code"]);
+    }
+
+    [Fact]
     public void Requisicao_malformada_vira_400()
     {
         var problema = MapeadorDeErros.Mapear(new BadHttpRequestException("Failed to read parameter from JSON"));

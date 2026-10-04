@@ -174,6 +174,11 @@ select[aria-invalid='true'] {
   font-size: 0.9rem;
 }
 
+.dica {
+  color: var(--cor-texto-suave);
+  font-size: 0.9rem;
+}
+
 .titulo-com-acao {
   display: flex;
   flex-wrap: wrap;

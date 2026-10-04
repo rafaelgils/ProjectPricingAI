@@ -5,6 +5,7 @@ import PaginaCatalogo from './paginas/PaginaCatalogo.tsx';
 import PaginaCotacao from './paginas/PaginaCotacao.tsx';
 import PaginaNaoEncontrada from './paginas/PaginaNaoEncontrada.tsx';
 import PaginaProjetos from './paginas/PaginaProjetos.tsx';
+import PaginaUsuarios from './paginas/PaginaUsuarios.tsx';
 
 export const rotas: RouteObject[] = [
   {
@@ -20,6 +21,7 @@ export const rotas: RouteObject[] = [
       { path: 'projetos/novo', element: <PaginaCotacao /> },
       { path: 'projetos/:id', element: <PaginaCotacao /> },
       { path: 'catalogo', element: <PaginaCatalogo /> },
+      { path: 'usuarios', element: <PaginaUsuarios /> },
       { path: '*', element: <PaginaNaoEncontrada /> },
     ],
   },

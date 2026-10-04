@@ -1,6 +1,6 @@
 # Padrões de código e estilo
 
-> Sistema de Cotação de Projetos · versão 0.11 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.12 · 04/10/2026
 > Regras que todo código, API e prompt do projeto seguem. Exceções exigem ADR em `architecture.md`.
 
 ## 1. Controle de versão
@@ -97,11 +97,13 @@ Códigos de erro (`code`). Toda resposta de erro da API tem `code`, inclusive as
 | `ACESSO_NEGADO` | 403 | Papel sem permissão |
 | `RECURSO_NAO_ENCONTRADO` | 404 | Recurso inexistente ou de outro cliente (RN07) |
 | `MATERIAL_DUPLICADO` | 409 | RN10, nome ou sinônimo repetido |
+| `USUARIO_DUPLICADO` | 409 | RF10, nome de usuário ou e-mail já cadastrado no Keycloak |
 | `CONFLITO_EDICAO` | 409 | O projeto mudou durante a rodada (ex.: duas mensagens ao mesmo tempo); a segunda não sobrescreve a primeira |
 | `ITENS_NAO_ENCONTRADOS` | 422 | RN03 |
 | `ESCLARECIMENTO_NECESSARIO` | 422 | RN06 e RN09 |
 | `PROJETO_ARQUIVADO` | 422 | RN11, mensagem "Este projeto está inativo." |
 | `MEDIDA_INVALIDA` | 422 | RN05: unidade que não converte para a do material, medida faltando ou quantidade que zera ao arredondar |
+| `ALTERACAO_PROPRIO_USUARIO` | 422 | RF10, o Admin tentou se desativar ou tirar o próprio papel `admin` |
 | `FALHA_PROCESSAMENTO` | 500 | RN12 |
 | `ERRO_INTERNO` | 500 | Erro inesperado; o detalhe vai só para o log |
 

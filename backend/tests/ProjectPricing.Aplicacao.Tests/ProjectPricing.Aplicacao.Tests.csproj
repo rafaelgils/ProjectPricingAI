@@ -2,4 +2,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProjectPricing.Aplicacao\ProjectPricing.Aplicacao.csproj" />
   </ItemGroup>
+
+  <!-- Suíte de regressão (plano, F11): o catálogo de referência é o mesmo carregado no MongoDB. -->
+  <ItemGroup>
+    <None Include="Regressao\casos-referencia.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\infra\mongodb\referencia\catalogo-referencia.json" Link="Regressao\catalogo-referencia.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

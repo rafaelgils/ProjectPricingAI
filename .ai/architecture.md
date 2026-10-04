@@ -1,6 +1,6 @@
 # Arquitetura e decisões (ADRs)
 
-> Sistema de Cotação de Projetos · versão 0.9 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.10 · 04/10/2026
 > Visão de alto nível, atributos de qualidade e registro das decisões de arquitetura.
 
 ## 1. Visão geral
@@ -194,7 +194,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
     - Ambiente igual em qualquer máquina, com uma imagem versionada por release.
     - Cada camada pode ser atualizada ou escalada sem mexer nas outras.
     - No MVP não há pipeline de CI nem registro de imagens: as imagens são geradas com `docker compose build` e ficam no Docker instalado na máquina.
-    - O MongoDB depende de volume persistente e de rotina de backup fora do contêiner.
+    - O MongoDB depende de volume persistente e de rotina de backup fora do contêiner: `scripts/backup-mongodb.sh` gera um arquivo compactado com coleções, índices e validadores, e `scripts/restaurar-mongodb.sh` o restaura.
 
 ### ADR-010 — Kong valida o JWT com a chave pública fixa do realm
 

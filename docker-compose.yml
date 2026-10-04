@@ -61,9 +61,15 @@ services:
     image: project-pricing/backend:0.1.0
     environment:
       ConnectionStrings__MongoDB: mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongodb:27017/${MONGO_APP_DATABASE}?authSource=${MONGO_APP_DATABASE}
+      # O "iss" dos tokens é a URL pública; os metadados e as chaves são lidos pela rede interna (plano, F2).
+      Keycloak__UrlPublica: http://localhost:8080/realms/precificacao
+      Keycloak__UrlInterna: http://keycloak:8080/realms/precificacao
+      Keycloak__ExigirHttpsMetadata: "false"
       Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
     depends_on:
       mongodb:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     healthcheck:
       # A imagem aspnet não tem curl e o /bin/sh dela (dash) não tem /dev/tcp; por isso o bash.

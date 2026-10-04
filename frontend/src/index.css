@@ -1,8 +1,28 @@
+/* Cores com contraste mínimo 4,5:1 sobre o fundo (WCAG 2.1 AA, RNF05). */
 :root {
+  --cor-texto: #1f2933;
+  --cor-texto-suave: #52606d;
+  --cor-fundo: #ffffff;
+  --cor-superficie: #f5f7fa;
+  --cor-borda: #cbd2d9;
+  --cor-primaria: #0b5394;
+  --cor-primaria-escura: #083c6b;
+  --cor-erro: #a61b1b;
+  --cor-erro-fundo: #fdecec;
+  --cor-info-fundo: #e8f1fb;
+  --cor-sucesso: #1d6b33;
+  --cor-foco: #f0a202;
+
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
-  color: #1a1a1a;
-  background-color: #ffffff;
+  color: var(--cor-texto);
+  background-color: var(--cor-fundo);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -10,7 +30,360 @@ body {
 }
 
 main {
-  max-width: 64rem;
+  max-width: 72rem;
   margin: 0 auto;
   padding: 1rem;
+}
+
+main:focus {
+  outline: none;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0.5rem 0 1rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+a {
+  color: var(--cor-primaria);
+}
+
+/* Foco sempre visível para quem navega pelo teclado. */
+:focus-visible {
+  outline: 3px solid var(--cor-foco);
+  outline-offset: 2px;
+}
+
+.pular-conteudo {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--cor-fundo);
+  padding: 0.5rem 1rem;
+  z-index: 10;
+}
+
+.pular-conteudo:focus {
+  left: 1rem;
+}
+
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Cabeçalho */
+.cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--cor-primaria);
+  color: #ffffff;
+}
+
+.marca {
+  font-weight: 700;
+}
+
+.cabecalho nav ul {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cabecalho a {
+  color: #ffffff;
+  text-decoration: none;
+  padding: 0.25rem 0;
+}
+
+.cabecalho a.active {
+  border-bottom: 3px solid #ffffff;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+/* Botões e formulários */
+button,
+.botao {
+  display: inline-block;
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--cor-primaria);
+  border-radius: 6px;
+  background: var(--cor-primaria);
+  color: #ffffff;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button:hover:not(:disabled),
+.botao:hover {
+  background: var(--cor-primaria-escura);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.botao-secundario {
+  background: var(--cor-fundo);
+  color: var(--cor-primaria);
+}
+
+.botao-secundario:hover:not(:disabled) {
+  background: var(--cor-superficie);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--cor-texto-suave);
+  border-radius: 6px;
+  width: 100%;
+}
+
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border: 2px solid var(--cor-erro);
+}
+
+.erro-campo {
+  color: var(--cor-erro);
+  font-size: 0.9rem;
+}
+
+.titulo-com-acao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.filtros label {
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  flex: 1 1 12rem;
+}
+
+.formulario {
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: var(--cor-superficie);
+}
+
+.grade-campos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+}
+
+.grade-campos label {
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.acoes {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* Tabelas */
+.tabela-rolavel {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+
+th,
+td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--cor-borda);
+  text-align: left;
+  vertical-align: top;
+}
+
+.numero {
+  text-align: right;
+  white-space: nowrap;
+}
+
+tfoot th,
+.total {
+  font-weight: 700;
+}
+
+.acoes-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.selo {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid currentColor;
+}
+
+.selo-cotado,
+.selo-ativo {
+  color: var(--cor-sucesso);
+}
+
+.selo-rascunho {
+  color: var(--cor-primaria);
+}
+
+.selo-arquivado,
+.selo-inativo {
+  color: var(--cor-texto-suave);
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+/* Avisos */
+.aviso {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.aviso-erro {
+  background: var(--cor-erro-fundo);
+  border-left: 4px solid var(--cor-erro);
+}
+
+.aviso-info,
+.aviso-sucesso {
+  background: var(--cor-info-fundo);
+  border-left: 4px solid var(--cor-primaria);
+}
+
+.aviso-titulo {
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.carregando {
+  color: var(--cor-texto-suave);
+}
+
+/* Cotação */
+.destaque-total {
+  font-size: 1.2rem;
+}
+
+.conversa {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mensagem {
+  max-width: 85%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  white-space: pre-wrap;
+}
+
+.mensagem-usuario {
+  align-self: flex-end;
+  background: var(--cor-primaria);
+  color: #ffffff;
+}
+
+.mensagem-assistente {
+  align-self: flex-start;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+}
+
+.sugestoes {
+  list-style: none;
+  padding: 0;
+}
+
+.sugestoes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+}
+
+.formulario-conversa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.formulario-conversa button {
+  align-self: flex-end;
+}
+
+/* Telas largas: formulário em duas colunas. */
+@media (min-width: 48rem) {
+  .grade-campos {
+    grid-template-columns: 14rem 1fr;
+    align-items: center;
+  }
+
+  .grade-campos .erro-campo {
+    grid-column: 2;
+  }
 }

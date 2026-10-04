@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
+import { lerConfiguracao } from './config.ts';
 
 const raiz = document.getElementById('root');
 if (!raiz) {
@@ -10,6 +11,6 @@ if (!raiz) {
 
 createRoot(raiz).render(
   <StrictMode>
-    <App />
+    <App config={lerConfiguracao()} />
   </StrictMode>,
 );

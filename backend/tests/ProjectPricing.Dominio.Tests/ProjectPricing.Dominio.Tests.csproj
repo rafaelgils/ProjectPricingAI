@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ProjectPricing.Dominio\ProjectPricing.Dominio.csproj" />
+  </ItemGroup>
+</Project>

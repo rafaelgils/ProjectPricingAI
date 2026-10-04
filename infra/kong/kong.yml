@@ -1,0 +1,16 @@
+# Configuração declarativa do Kong OSS 3.9 (modo DB-less).
+# Plugins cors e jwt (ADR-010) e as rotas de SSE entram na fase F2.
+_format_version: '3.0'
+
+services:
+  - name: backend
+    url: http://backend:8080
+    routes:
+      - name: api-v1
+        paths:
+          - /api/v1
+        strip_path: false
+      - name: openapi
+        paths:
+          - /openapi/v1.json
+        strip_path: false

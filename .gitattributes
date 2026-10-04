@@ -1,0 +1,7 @@
+* text=auto eol=lf
+
+# Scripts de shell precisam de LF mesmo no Windows
+*.sh text eol=lf
+
+*.png binary
+*.svg text

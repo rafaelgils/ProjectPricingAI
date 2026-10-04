@@ -25,7 +25,15 @@ public interface IFerramentasCotacao
     Task<ResultadoCalculo> CalcularAsync(string projetoId, IReadOnlyList<ItemPedido> itens, CancellationToken cancellationToken);
 
     /// <summary>salvarProjeto: recalcula e grava a cotação com o snapshot dos preços (ADR-007).</summary>
-    Task<Projeto> SalvarProjetoAsync(string projetoId, IReadOnlyList<ItemPedido> itens, CancellationToken cancellationToken);
+    /// <param name="versaoEsperada">
+    /// Versão do projeto quando a rodada começou. Se o projeto mudou depois disso, a gravação é recusada.
+    /// </param>
+    /// <exception cref="ConflitoDeEdicaoException">O projeto mudou durante a rodada.</exception>
+    Task<Projeto> SalvarProjetoAsync(
+        string projetoId,
+        IReadOnlyList<ItemPedido> itens,
+        int? versaoEsperada,
+        CancellationToken cancellationToken);
 }
 
 public sealed class FerramentasCotacao(
@@ -60,9 +68,14 @@ public sealed class FerramentasCotacao(
     public async Task<Projeto> SalvarProjetoAsync(
         string projetoId,
         IReadOnlyList<ItemPedido> itens,
+        int? versaoEsperada,
         CancellationToken cancellationToken)
     {
         var projeto = await ObterProjetoDoUsuarioAsync(projetoId, cancellationToken);
+        if (versaoEsperada is { } versao && projeto.Versao != versao)
+        {
+            throw new ConflitoDeEdicaoException();
+        }
 
         // Recalcula aqui mesmo: o valor gravado nunca vem de fora do Serviço de Precificação (ADR-001).
         var resultado = await CalcularParaAsync(projeto, itens, cancellationToken);

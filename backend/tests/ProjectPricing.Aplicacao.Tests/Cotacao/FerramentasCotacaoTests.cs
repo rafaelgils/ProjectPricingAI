@@ -98,6 +98,7 @@ public class FerramentasCotacaoTests
 
         var projeto = await Ferramentas.SalvarProjetoAsync(ProjetoId,
             [new ItemPedido("m-chapa", Placa60x60), new ItemPedido("m-cabecote", new MedidaInformada(1, "un"))],
+            versaoEsperada: 0,
             CancellationToken.None);
 
         Assert.Equal(StatusProjeto.Cotado, projeto.Status);
@@ -109,6 +110,37 @@ public class FerramentasCotacaoTests
     }
 
     [Fact]
+    public async Task Refinamento_que_remove_item_tira_o_subtotal_dele_e_inclui_o_novo_com_preco_atual_RN02()
+    {
+        _projeto.RegistrarCotacao(
+        [
+            new ItemProjeto("m-chapa", "Chapa", 0.36m, UnidadeMedida.MetroQuadrado, 100m, 36.00m),
+            new ItemProjeto("m-cabecote", "Cabeçote de metal", 1m, UnidadeMedida.Unidade, 28.50m, 28.50m),
+        ], 64.50m, Agora.AddDays(-1));
+        CatalogoTem(Material("m-pelicula", "Película refletiva", 95m), Material("m-chapa", "Chapa de aço galvanizado", 120m));
+
+        var projeto = await Ferramentas.SalvarProjetoAsync(ProjetoId,
+            [new ItemPedido("m-chapa", Placa60x60), new ItemPedido("m-pelicula", Placa60x60)], versaoEsperada: 0, CancellationToken.None);
+
+        Assert.Equal(["m-chapa", "m-pelicula"], projeto.Itens.Select(i => i.MaterialId));
+        Assert.Equal(100m, projeto.Itens[0].PrecoUnitarioSnapshot); // já cotado: preço congelado, mesmo com o catálogo a 120
+        Assert.Equal(95m, projeto.Itens[1].PrecoUnitarioSnapshot); // novo: preço atual do catálogo
+        Assert.Equal(36.00m + 34.20m, projeto.ValorTotal); // o cabeçote removido saiu do total
+    }
+
+    [Fact]
+    public async Task Projeto_alterado_durante_a_rodada_nao_e_sobrescrito()
+    {
+        CatalogoTem(Material("m-chapa", "Chapa de aço galvanizado", 120m));
+        _projeto.AvancarVersao();
+
+        await Assert.ThrowsAsync<ConflitoDeEdicaoException>(() => Ferramentas.SalvarProjetoAsync(
+            ProjetoId, [new ItemPedido("m-chapa", Placa60x60)], versaoEsperada: 0, CancellationToken.None));
+
+        _projetos.Verify(p => p.AtualizarAsync(It.IsAny<Projeto>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Projeto_de_outro_cliente_responde_como_inexistente_RN07()
     {
         _usuario.SetupGet(u => u.KeycloakId).Returns("outro-cliente");
@@ -116,7 +148,7 @@ public class FerramentasCotacaoTests
         await Assert.ThrowsAsync<RecursoNaoEncontradoException>(() =>
             Ferramentas.CalcularAsync(ProjetoId, [], CancellationToken.None));
         await Assert.ThrowsAsync<RecursoNaoEncontradoException>(() =>
-            Ferramentas.SalvarProjetoAsync("6703f1c2a9000000000000ff", [], CancellationToken.None));
+            Ferramentas.SalvarProjetoAsync("6703f1c2a9000000000000ff", [], null, CancellationToken.None));
     }
 
     [Fact]
@@ -125,7 +157,7 @@ public class FerramentasCotacaoTests
         typeof(Projeto).GetProperty(nameof(Projeto.Status))!.SetValue(_projeto, StatusProjeto.Arquivado);
 
         await Assert.ThrowsAsync<ProjetoArquivadoException>(() =>
-            Ferramentas.SalvarProjetoAsync(ProjetoId, [], CancellationToken.None));
+            Ferramentas.SalvarProjetoAsync(ProjetoId, [], null, CancellationToken.None));
     }
 
     [Fact]

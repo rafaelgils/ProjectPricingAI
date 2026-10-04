@@ -389,6 +389,26 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
 - RN11: arquivado é somente leitura.
 - Transições de estado (`business-rules.md` §6).
 
+**Situação:** concluída em 04/10/2026, na branch `feature/8-projetos-conversas`. O caminho de sucesso com o Claude real ainda não foi testado, porque não há chave da Claude API no ambiente.
+
+Teste de ponta a ponta pelo Kong, com tokens reais (sem a chave, o agente falha e o fluxo da RN12 é exercitado):
+- **Cotação em SSE:** `POST /projetos` responde `201` com `Location` e `text/event-stream`, e o primeiro byte chega em 0,21 s (meta do RNF02: 3 s). Os eventos são `delta` → `erro` (500 `FALHA_PROCESSAMENTO`, com a mensagem fixa) → `fim` (`rascunho`).
+- **Visibilidade (RN07):** o cliente-interno vê o próprio projeto; o cliente-externo não o vê na lista e recebe `404` no detalhe, na mensagem e no arquivamento; o Admin vê.
+- **Histórico:** traz a mensagem do cliente e a do assistente, sem os registros internos do agente.
+- **Refinamento com falha (RN12):** num projeto já cotado, a falha do refinamento mantém a cotação anterior (status `cotado`, total R$ 43,20).
+- **Validação:** descrição vazia ou status inválido respondem `400`.
+- **Arquivamento (RN04 e RN11):** `DELETE` responde `204` (repetir também responde `204`); depois disso, uma mensagem responde `422 PROJETO_ARQUIVADO` ("Este projeto está inativo."), antes de abrir o stream.
+
+Decisões de implementação:
+- **Concorrência otimista:**
+  - O `ProjetoRepository` só grava se a versão no banco for a lida, e então a avança.
+  - A tool `salvarProjeto` também recebe a versão com que a rodada do agente começou. Assim, uma segunda mensagem enviada durante a chamada ao LLM é detectada.
+  - O conflito responde `409 CONFLITO_EDICAO` (registrado no `standards.md` §5).
+- **Stream:** o primeiro `delta` ("Analisando a descrição do projeto...") sai antes de chamar o agente, o que garante o RNF02 mesmo com o LLM lento.
+- **Erro com o stream aberto:** vai como evento `erro`; erro inesperado responde `500 ERRO_INTERNO`, sem detalhes internos. Se o cliente fecha a conexão, o stream termina sem erro.
+- **Permissões:** só o dono conversa no projeto; o Admin vê, lista e arquiva projetos de todos, mas não manda mensagens em projeto alheio (catálogo da API, `architecture.md` §4).
+- **Recusa de alteração de preço:** quem a faz é o LLM, seguindo o prompt (`backend/prompts/interpretacao.md`), e por isso ela só pode ser verificada com o Claude real. O código garante que o preço de um item já cotado nunca muda.
+
 ### F8 — Frontend (RF01 a RF08, RNF05)
 
 - Base:

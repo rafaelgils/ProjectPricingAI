@@ -41,7 +41,7 @@ public class AgenteProjetosTests
             .Setup(f => f.CalcularAsync(ProjetoId, It.IsAny<IReadOnlyList<ItemPedido>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ResultadoCalculo([], 105.90m));
         _ferramentas
-            .Setup(f => f.SalvarProjetoAsync(ProjetoId, It.IsAny<IReadOnlyList<ItemPedido>>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.SalvarProjetoAsync(ProjetoId, It.IsAny<IReadOnlyList<ItemPedido>>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(_projeto);
         _ferramentas
             .Setup(f => f.ListarCatalogoAtivoAsync(It.IsAny<CancellationToken>()))
@@ -60,8 +60,7 @@ public class AgenteProjetosTests
         Assert.Equal("Para esse projeto o valor estimado é R$ 105,90.", resultado.Mensagem);
         _ferramentas.Verify(f => f.SalvarProjetoAsync(ProjetoId,
             It.Is<IReadOnlyList<ItemPedido>>(p => p.Select(i => i.MaterialId).SequenceEqual(new[] { "m-chapa", "m-pelicula" })
-                && p[0].Medida == new MedidaInformada(null, "cm", 60, 60)),
-            It.IsAny<CancellationToken>()));
+                && p[0].Medida == new MedidaInformada(null, "cm", 60, 60)), It.IsAny<int?>(), It.IsAny<CancellationToken>()));
         Assert.Equal([PapelMensagem.Usuario, PapelMensagem.Assistente], _conversa.Mensagens.Select(m => m.Papel));
         _conversas.Verify(c => c.AtualizarAsync(_conversa, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -113,7 +112,7 @@ public class AgenteProjetosTests
         await Processar("Sim, pode usar a película refletiva");
 
         _ferramentas.Verify(f => f.SalvarProjetoAsync(ProjetoId,
-            It.Is<IReadOnlyList<ItemPedido>>(p => p.Single().MaterialId == "m-pelicula"), It.IsAny<CancellationToken>()));
+            It.Is<IReadOnlyList<ItemPedido>>(p => p.Single().MaterialId == "m-pelicula"), It.IsAny<int?>(), It.IsAny<CancellationToken>()));
         _ferramentas.Verify(f => f.BuscarMateriaisAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -182,7 +181,7 @@ public class AgenteProjetosTests
         await Processar("Placa de 1 m²");
 
         _ferramentas.Verify(f => f.SalvarProjetoAsync(ProjetoId,
-            It.Is<IReadOnlyList<ItemPedido>>(p => p.Single().MaterialId == "m-chapa"), It.IsAny<CancellationToken>()));
+            It.Is<IReadOnlyList<ItemPedido>>(p => p.Single().MaterialId == "m-chapa"), It.IsAny<int?>(), It.IsAny<CancellationToken>()));
     }
 
     [Fact]
@@ -195,7 +194,7 @@ public class AgenteProjetosTests
 
         _ferramentas.Verify(f => f.BuscarMateriaisAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()), Times.Never);
         _ferramentas.Verify(f => f.SalvarProjetoAsync(ProjetoId,
-            It.Is<IReadOnlyList<ItemPedido>>(p => p.Single().Medida == new MedidaInformada(null, "cm", 80, 80)), It.IsAny<CancellationToken>()));
+            It.Is<IReadOnlyList<ItemPedido>>(p => p.Single().Medida == new MedidaInformada(null, "cm", 80, 80)), It.IsAny<int?>(), It.IsAny<CancellationToken>()));
     }
 
     [Fact]

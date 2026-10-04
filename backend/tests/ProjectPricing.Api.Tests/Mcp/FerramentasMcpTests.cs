@@ -78,7 +78,7 @@ public class FerramentasMcpTests
         var projeto = new Projeto("cliente", "Placa", Agora);
         projeto.RegistrarCotacao([new ItemProjeto("m-chapa", "Chapa", 0.36m, UnidadeMedida.MetroQuadrado, 120m, 43.20m)], 43.20m, Agora);
         _ferramentas
-            .Setup(f => f.SalvarProjetoAsync("p1", It.IsAny<IReadOnlyList<ItemPedido>>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.SalvarProjetoAsync("p1", It.IsAny<IReadOnlyList<ItemPedido>>(), null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(projeto);
 
         var calculo = await new FerramentasMcp(_ferramentas.Object)

@@ -33,20 +33,66 @@ public class RepositoriosTests
     }
 
     [Fact]
-    public async Task Atualizar_substitui_o_documento_pelo_id()
+    public async Task Atualizar_projeto_grava_so_sobre_a_versao_lida_e_avanca_a_versao()
     {
         var colecao = new Mock<IMongoCollection<Projeto>>();
         FilterDefinition<Projeto>? filtroUsado = null;
         colecao
             .Setup(c => c.ReplaceOneAsync(It.IsAny<FilterDefinition<Projeto>>(), It.IsAny<Projeto>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
             .Callback<FilterDefinition<Projeto>, Projeto, ReplaceOptions, CancellationToken>((filtro, _, _, _) => filtroUsado = filtro)
-            .ReturnsAsync(Mock.Of<ReplaceOneResult>());
+            .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
         var projeto = ProjetoComId(IdValido);
 
         await new ProjetoRepository(colecao.Object).AtualizarAsync(projeto, CancellationToken.None);
 
         Assert.NotNull(filtroUsado);
-        Assert.Equal(new BsonDocument("_id", ObjectId.Parse(IdValido)), Renderizar(filtroUsado));
+        Assert.Equal(new BsonDocument { ["_id"] = ObjectId.Parse(IdValido), ["versao"] = 0 }, Renderizar(filtroUsado));
+        Assert.Equal(1, projeto.Versao);
+    }
+
+    [Fact]
+    public async Task Atualizar_projeto_alterado_por_outra_gravacao_e_conflito()
+    {
+        var colecao = new Mock<IMongoCollection<Projeto>>();
+        colecao
+            .Setup(c => c.ReplaceOneAsync(It.IsAny<FilterDefinition<Projeto>>(), It.IsAny<Projeto>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReplaceOneResult.Acknowledged(0, 0, null));
+
+        await Assert.ThrowsAsync<ProjectPricing.Dominio.Excecoes.ConflitoDeEdicaoException>(() =>
+            new ProjetoRepository(colecao.Object).AtualizarAsync(ProjetoComId(IdValido), CancellationToken.None));
+    }
+
+    [Fact]
+    public void Filtro_de_projetos_por_cliente_e_status()
+    {
+        var filtro = ProjetoRepository.MontarFiltro(new FiltroProjetos("kc-1", StatusProjeto.Cotado, 1, 20));
+
+        Assert.Equal(new BsonDocument { ["clienteId"] = "kc-1", ["status"] = "cotado" }, Renderizar(filtro));
+        Assert.Equal(new BsonDocument(), Renderizar(ProjetoRepository.MontarFiltro(new FiltroProjetos(null, null, 1, 20))));
+    }
+
+    [Fact]
+    public async Task Listar_projetos_conta_e_pagina()
+    {
+        var colecao = new Mock<IMongoCollection<Projeto>>();
+        FindOptions<Projeto, Projeto>? opcoesUsadas = null;
+        colecao
+            .Setup(c => c.CountDocumentsAsync(It.IsAny<FilterDefinition<Projeto>>(), It.IsAny<CountOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
+        var cursor = new Mock<IAsyncCursor<Projeto>>();
+        cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true).ReturnsAsync(false);
+        cursor.SetupGet(c => c.Current).Returns([ProjetoComId(IdValido)]);
+        colecao
+            .Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Projeto>>(), It.IsAny<FindOptions<Projeto, Projeto>>(), It.IsAny<CancellationToken>()))
+            .Callback<FilterDefinition<Projeto>, FindOptions<Projeto, Projeto>, CancellationToken>((_, opcoes, _) => opcoesUsadas = opcoes)
+            .ReturnsAsync(cursor.Object);
+
+        var pagina = await new ProjetoRepository(colecao.Object).ListarAsync(new FiltroProjetos(null, null, 2, 2), CancellationToken.None);
+
+        Assert.Equal(3, pagina.Total);
+        Assert.Single(pagina.Itens);
+        Assert.Equal(2, opcoesUsadas!.Skip);
+        Assert.Equal(2, opcoesUsadas.Limit);
     }
 
     [Fact]

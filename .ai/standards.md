@@ -1,6 +1,6 @@
 # Padrões de código e estilo
 
-> Sistema de Cotação de Projetos · versão 0.10 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.11 · 04/10/2026
 > Regras que todo código, API e prompt do projeto seguem. Exceções exigem ADR em `architecture.md`.
 
 ## 1. Controle de versão
@@ -151,6 +151,10 @@ O `type` é derivado do `code` (ex.: `ITENS_NAO_ENCONTRADOS` → `https://precif
 - Imagens base apenas oficiais e com tag de versão fixa, nunca `latest`; a lista está em `tech-stack.md`.
 - Imagens de Frontend e Backend construídas com *multi-stage build* (etapa de build separada da etapa de execução).
 - Ambiente local sobe todas as camadas com um único `docker compose up`.
+- Os contêineres próprios rodam sem root (`frontend` como `nginx`, `backend` como `app`), com `no-new-privileges` e sem *capabilities* do kernel (`cap_drop: ALL`).
+- O `frontend` responde com cabeçalhos de segurança: `Content-Security-Policy` (scripts só do próprio site; conexões só com a API e o Keycloak), `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`. Nenhum script inline no `index.html`.
+- Logs do `backend` em JSON estruturado, sem tokens, senhas nem a chave da Claude API.
+- Backup do MongoDB com `scripts/backup-mongodb.sh` (por padrão mantém os 7 mais recentes em `backups/`, fora do Git) e restauração com `scripts/restaurar-mongodb.sh`.
 - Configuração por variáveis de ambiente; nenhuma chave ou senha gravada na imagem. No ambiente local, os segredos ficam num `.env` fora do Git; fora dele, no AWS Secrets Manager.
 - O ambiente local usa HTTP. Neste momento só existe o ambiente local.
 - Tags das imagens seguem a versão semântica da release. Por enquanto não há registro de imagens: as imagens ficam no Docker instalado na máquina.

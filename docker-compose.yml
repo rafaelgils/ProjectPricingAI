@@ -59,6 +59,10 @@ services:
     build:
       context: ./backend
     image: project-pricing/backend:0.1.0
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       ConnectionStrings__MongoDB: mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongodb:27017/${MONGO_APP_DATABASE}?authSource=${MONGO_APP_DATABASE}
       # O "iss" dos tokens é a URL pública; os metadados e as chaves são lidos pela rede interna (plano, F2).
@@ -119,9 +123,14 @@ services:
       OIDC_AUTHORITY: http://localhost:8080/realms/precificacao
       OIDC_CLIENT_ID: precificacao-frontend
     ports:
-      - "3000:80"
+      - "3000:8080"
+    # Sem root e sem capacidades extras do kernel (plano, F9)
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -32,3 +32,6 @@ desktop.ini
 
 # Logs
 *.log
+
+# Backups do MongoDB (scripts/backup-mongodb.sh)
+backups/

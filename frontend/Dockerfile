@@ -8,10 +8,17 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Etapa de execução: só os arquivos estáticos servidos pelo Nginx
+# Etapa de execução: só os arquivos estáticos servidos pelo Nginx, sem root (plano, F9)
 FROM nginx:1.30-alpine AS runtime
+
+# A imagem oficial roda o processo principal como root; aqui tudo roda como o usuário nginx.
+RUN sed -i '/^user /d; s#^pid .*#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
+    && mkdir -p /etc/nginx/gerado \
+    && chown -R nginx:nginx /var/cache/nginx /usr/share/nginx/html /etc/nginx/gerado
+
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=755 nginx/40-gerar-env.sh /docker-entrypoint.d/40-gerar-env.sh
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+USER nginx
+EXPOSE 8080

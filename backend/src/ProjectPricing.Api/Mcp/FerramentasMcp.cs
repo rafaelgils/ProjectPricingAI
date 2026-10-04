@@ -38,7 +38,7 @@ public sealed class FerramentasMcp(IFerramentasCotacao ferramentas)
         [Description("Itens com material e medida.")] ItemPedidoDto[] itens,
         CancellationToken cancellationToken) =>
         Executar(async () => CalculoDto.De(
-            await ferramentas.SalvarProjetoAsync(projetoId, [.. itens.Select(i => i.ParaItemPedido())], cancellationToken)));
+            await ferramentas.SalvarProjetoAsync(projetoId, [.. itens.Select(i => i.ParaItemPedido())], versaoEsperada: null, cancellationToken)));
 
     /// <summary>
     /// Erros de negócio chegam ao cliente MCP com o code estável e a mensagem (standards.md §5).

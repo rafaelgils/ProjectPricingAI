@@ -90,6 +90,30 @@ public class ProjetoCotacaoTests
     }
 
     [Fact]
+    public void Arquivar_e_estado_final_e_registra_a_data_uma_vez()
+    {
+        var projeto = new Projeto("cliente", "Placa", Agora.AddDays(-1));
+
+        projeto.Arquivar(Agora);
+        projeto.Arquivar(Agora.AddDays(1));
+
+        Assert.Equal(StatusProjeto.Arquivado, projeto.Status);
+        Assert.Equal(Agora, projeto.AlteradoEm);
+        Assert.Throws<ProjetoArquivadoException>(projeto.GarantirQueNaoEstaArquivado);
+    }
+
+    [Fact]
+    public void Versao_avanca_a_cada_gravacao()
+    {
+        var projeto = new Projeto("cliente", "Placa", Agora);
+
+        projeto.AvancarVersao();
+        projeto.AvancarVersao();
+
+        Assert.Equal(2, projeto.Versao);
+    }
+
+    [Fact]
     public void Cotacao_precisa_de_itens()
     {
         Assert.Throws<ArgumentException>(() => new Projeto("cliente", "Placa", Agora).RegistrarCotacao([], 0m, Agora));

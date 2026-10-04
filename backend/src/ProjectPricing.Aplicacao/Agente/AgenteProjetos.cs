@@ -18,6 +18,12 @@ namespace ProjectPricing.Aplicacao.Agente;
 /// <summary>Cotação gravada e a resposta ao cliente.</summary>
 public sealed record ResultadoAgente(Projeto Projeto, string Mensagem);
 
+/// <summary>Agente de Projetos; a interface permite simular o agente nos testes dos endpoints.</summary>
+public interface IAgenteProjetos
+{
+    Task<ResultadoAgente> ProcessarAsync(Projeto projeto, Conversa conversa, string mensagemDoCliente, CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// Agente de Projetos (architecture.md §5.3 a §5.5). O LLM só interpreta a descrição e chama buscarMateriais;
 /// a classificação da RN09, a ordem de decisão, o cálculo e a gravação são do código (ADR-001, ADR-006).
@@ -27,7 +33,7 @@ public sealed partial class AgenteProjetos(
     IFerramentasCotacao ferramentas,
     IConversaRepository conversas,
     TimeProvider relogio,
-    ILogger<AgenteProjetos> logger)
+    ILogger<AgenteProjetos> logger) : IAgenteProjetos
 {
     /// <summary>Uma nova tentativa quando a saída do LLM não segue o schema (plano, F6).</summary>
     private const int TentativasDeInterpretacao = 2;
@@ -110,7 +116,7 @@ public sealed partial class AgenteProjetos(
 
         // O agente chama calcular e salvarProjeto pelo código; o LLM não tem acesso a elas (ADR-006).
         var calculo = await ferramentas.CalcularAsync(projeto.Id!, resolucao.Pedidos, cancellationToken);
-        var salvo = await ferramentas.SalvarProjetoAsync(projeto.Id!, resolucao.Pedidos, cancellationToken);
+        var salvo = await ferramentas.SalvarProjetoAsync(projeto.Id!, resolucao.Pedidos, projeto.Versao, cancellationToken);
 
         var mensagem = $"Para esse projeto o valor estimado é {calculo.Total.ToString("C", PtBr)}.";
         return new ResultadoAgente(salvo, mensagem);

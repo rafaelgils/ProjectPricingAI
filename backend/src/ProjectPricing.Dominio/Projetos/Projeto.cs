@@ -68,6 +68,23 @@ public sealed class Projeto
         AlteradoEm = agora;
     }
 
+    /// <summary>Exclusão lógica (RN04): o projeto vira somente leitura (RN11). Arquivar de novo não muda nada.</summary>
+    public void Arquivar(DateTimeOffset agora)
+    {
+        if (Status == StatusProjeto.Arquivado)
+        {
+            return;
+        }
+
+        Status = StatusProjeto.Arquivado;
+        AlteradoEm = agora;
+    }
+
+    /// <summary>
+    /// Concorrência otimista: o repositório grava só se a versão no banco for a lida, e então a avança.
+    /// </summary>
+    public void AvancarVersao() => Versao++;
+
     /// <summary>Projeto arquivado é somente leitura (RN11).</summary>
     public void GarantirQueNaoEstaArquivado()
     {

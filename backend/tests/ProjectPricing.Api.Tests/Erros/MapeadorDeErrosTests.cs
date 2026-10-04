@@ -81,6 +81,15 @@ public class MapeadorDeErrosTests
     }
 
     [Fact]
+    public void Conflito_de_edicao_vira_409()
+    {
+        var problema = MapeadorDeErros.Mapear(new ConflitoDeEdicaoException());
+
+        Assert.Equal(409, problema.Status);
+        Assert.Equal("CONFLITO_EDICAO", problema.Extensions["code"]);
+    }
+
+    [Fact]
     public void Requisicao_malformada_vira_400()
     {
         var problema = MapeadorDeErros.Mapear(new BadHttpRequestException("Failed to read parameter from JSON"));

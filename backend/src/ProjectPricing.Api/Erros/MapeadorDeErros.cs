@@ -52,7 +52,7 @@ public static class MapeadorDeErros
     private static int StatusDe(ExcecaoDeDominio excecao) => excecao switch
     {
         RecursoNaoEncontradoException => StatusCodes.Status404NotFound,
-        MaterialDuplicadoException => StatusCodes.Status409Conflict,
+        MaterialDuplicadoException or ConflitoDeEdicaoException => StatusCodes.Status409Conflict,
         FalhaProcessamentoException => StatusCodes.Status500InternalServerError,
         // ITENS_NAO_ENCONTRADOS, ESCLARECIMENTO_NECESSARIO, PROJETO_ARQUIVADO e MEDIDA_INVALIDA: regra de negócio violada.
         _ => StatusCodes.Status422UnprocessableEntity,

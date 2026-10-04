@@ -6,11 +6,13 @@ using ProjectPricing.Api.Erros;
 using ProjectPricing.Api.Json;
 using ProjectPricing.Api.Materiais;
 using ProjectPricing.Api.Mcp;
+using ProjectPricing.Api.Projetos;
 using ProjectPricing.Api.Usuarios;
 using ProjectPricing.Api.Validacao;
 using ProjectPricing.Aplicacao.Agente;
 using ProjectPricing.Aplicacao.Cotacao;
 using ProjectPricing.Aplicacao.Materiais;
+using ProjectPricing.Aplicacao.Projetos;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Precificacao;
 using ProjectPricing.Infraestrutura;
@@ -37,6 +39,9 @@ ConfiguracaoValidacao.Aplicar();
 builder.Services.AddSingleton<IValidator<CriarMaterialRequisicao>, CriarMaterialValidador>();
 builder.Services.AddSingleton<IValidator<AlterarMaterialRequisicao>, AlterarMaterialValidador>();
 builder.Services.AddSingleton<IValidator<ConsultaMateriais>, ConsultaMateriaisValidador>();
+builder.Services.AddSingleton<IValidator<CriarProjetoRequisicao>, CriarProjetoValidador>();
+builder.Services.AddSingleton<IValidator<EnviarMensagemRequisicao>, EnviarMensagemValidador>();
+builder.Services.AddSingleton<IValidator<ConsultaProjetos>, ConsultaProjetosValidador>();
 
 builder.Services.AdicionarAutenticacaoKeycloak(builder.Configuration);
 builder.Services.AdicionarPoliticasDeAutorizacao();
@@ -50,7 +55,9 @@ builder.Services.AddScoped<ServicoCatalogo>();
 builder.Services.AddSingleton<IConversorUnidades>(ConversorUnidades.CriarPadrao());
 builder.Services.AddSingleton<IServicoPrecificacao, ServicoPrecificacao>();
 builder.Services.AddScoped<IFerramentasCotacao, FerramentasCotacao>();
-builder.Services.AddScoped<AgenteProjetos>();
+builder.Services.AddScoped<IAgenteProjetos, AgenteProjetos>();
+builder.Services.AddScoped<ServicoProjetos>();
+builder.Services.AddScoped<CondutorConversa>();
 builder.Services.AdicionarClaude(
     builder.Configuration.GetSection(OpcoesAnthropic.Secao).Get<OpcoesAnthropic>() ?? new OpcoesAnthropic());
 builder.Services.AddMcpServer()
@@ -78,6 +85,7 @@ app.MapMcp("/mcp").RequireAuthorization(Politicas.PodeCotar);
 
 app.MapGroup("/api/v1")
     .MapearUsuarios()
-    .MapearMateriais();
+    .MapearMateriais()
+    .MapearProjetos();
 
 app.Run();

@@ -34,7 +34,7 @@ Entregar a **release 1.0.0 (MVP)** rodando localmente com `docker compose up`, e
 | ID | Premissa | Motivo |
 | --- | --- | --- |
 | P1 | O Backend é uma solução .NET com 4 projetos (`Dominio`, `Aplicacao`, `Infraestrutura`, `Api`), mais 1 projeto de testes para cada um | SOLID e inversão de dependência (`standards.md` §2) |
-| P2 | O Servidor MCP roda dentro do contêiner `backend` (`ModelContextProtocol.AspNetCore`), no endpoint interno `/mcp`, que o Kong não roteia. O agente usa um `McpClient` e repassa o JWT do usuário, para que as *policies* também valham nas tools | ADR-006 e ADR-009 |
+| P2 | O Servidor MCP roda dentro do contêiner `backend` (`ModelContextProtocol.AspNetCore`), no endpoint interno `/mcp`, que o Kong não roteia e que exige token com a policy `PodeCotar`. As três tools são uma única implementação (`IFerramentasCotacao`): o MCP a expõe, e o agente a executa dentro do mesmo processo, na requisição do usuário. *Revisada na F6:* a versão anterior previa o agente chamando o próprio `/mcp` pela rede com o JWT, mas nesse caminho as exceções de domínio chegariam como erro genérico de tool | ADR-006 e ADR-009 |
 | P3 | Valores monetários e quantidades usam `decimal` / `Decimal128`. As datas são gravadas em UTC e a API as devolve em `-03:00` | `standards.md` §3 e §5 |
 | P4 | Paginação: `tamanho` tem padrão 20 e máximo 100 | `standards.md` §5 não define os valores |
 | P5 | A configuração do Frontend é lida na subida do contêiner (`env.js` gerado pelo Nginx), e não no build do Vite | Uma imagem por release (ADR-009) |
@@ -327,6 +327,34 @@ Esta fase tem prioridade de cobertura (`standards.md` §7).
   - Maior resultado entre o nome e os sinônimos.
   - O exemplo "película reflexiva" × "Película refletiva" ≈ 94%.
   - Os limites 79,9%, 80% e 100%.
+
+**Situação:** concluída em 04/10/2026, na branch `feature/7-mcp-agente`, sem teste com o Claude real (não há chave da Claude API no ambiente).
+- **Testes unitários (271 no backend):**
+  - O agente cobre todos os casos acima, com o LLM simulado.
+  - Os testes do cliente Claude usam o SDK oficial montando a requisição de verdade, capturada por um `HttpMessageHandler` falso, sem chamada externa. Eles confirmam:
+    - `model: claude-opus-5-5`;
+    - `output_config.effort: medium` com *thinking* adaptativo;
+    - `output_config.format` do tipo `json_schema`;
+    - `fallbacks: "default"` com o beta `server-side-fallback-2026-07-01`;
+    - a tool `buscarMateriais` oferecida e executada (o resultado volta como `tool_result`);
+    - a recusa chegando como `ContentFilter`.
+- **Teste de ponta a ponta no `/mcp`, com token real e MongoDB real:**
+  - `tools/list` traz as 3 tools.
+  - `buscarMateriais` classifica "placa" como `encontrado` (100%, pelo sinônimo), "película reflexiva" como `aConfirmar` (94%) e "cabeçote de metal" como `semCorrespondencia` (28%).
+  - `salvarProjeto` grava o projeto como `cotado`, com o snapshot do preço.
+  - Erros de negócio chegam ao cliente MCP com o `code` (`MEDIDA_INVALIDA`, `RECURSO_NAO_ENCONTRADO`).
+  - Projeto de outro cliente não é encontrado (RN07), e a chamada sem token recebe `401`.
+  - O Kong responde `404` para `/mcp`.
+- **Como ficou o código:**
+  - Tools em `Aplicacao/Cotacao/FerramentasCotacao` e Servidor MCP em `Api/Mcp/FerramentasMcp`.
+  - Agente em `Aplicacao/Agente/AgenteProjetos`, com os prompts em `backend/prompts/`, embutidos no assembly.
+  - Cliente Claude em `Infraestrutura/Llm/ClienteClaude`.
+- **Decisões de implementação:**
+  - **Classificação feita pelo código:** a RN09 é recalculada pelo agente; o `materialId` vindo do LLM só é aceito sem busca se for de um item já cotado no projeto ou de uma sugestão que o cliente confirmou.
+  - **Sugestões pendentes:** ficam na conversa como mensagem `tool` (JSON) e entram no contexto da rodada seguinte.
+  - **Integridade do valor:** `salvarProjeto` recalcula antes de gravar, então o valor gravado nunca vem de fora do Serviço de Precificação.
+  - **Refinamento (RN02):** material já cotado usa o nome e o preço congelados, e material novo precisa estar ativo. Como o cálculo é determinístico, itens sem mudança mantêm o mesmo subtotal.
+  - **Resiliência:** o próprio SDK repete chamadas que falham (padrão de 2 novas tentativas, timeout de 90 s), então o pacote `Microsoft.Extensions.Http.Resilience` não foi necessário.
 
 ### F7 — Projetos e conversas (RF03, RF04, RF06, RF07, RN02, RN07, RN11)
 

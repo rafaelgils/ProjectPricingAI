@@ -9,6 +9,7 @@ COPY src/ProjectPricing.Infraestrutura/ProjectPricing.Infraestrutura.csproj src/
 COPY src/ProjectPricing.Api/ProjectPricing.Api.csproj src/ProjectPricing.Api/
 RUN dotnet restore src/ProjectPricing.Api/ProjectPricing.Api.csproj
 
+COPY prompts/ prompts/
 COPY src/ src/
 RUN dotnet publish src/ProjectPricing.Api/ProjectPricing.Api.csproj -c Release -o /app --no-restore
 

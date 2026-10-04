@@ -1,0 +1,21 @@
+# Ajustes para depurar o Backend e o Frontend fora do Docker (docs/guia-de-debug.md).
+# Uso: docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --no-deps mongodb keycloak kong
+#   - mongodb: publicado só em 127.0.0.1:27017, para o Backend rodando na IDE.
+#   - kong: repassa a API para o Backend da máquina (http://host.docker.internal:5080) em vez do contêiner.
+# Os contêineres backend e frontend não sobem: eles rodam na máquina, no depurador.
+services:
+  mongodb:
+    ports:
+      - "127.0.0.1:27017:27017"
+
+  kong:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Mesmo kong.yml versionado, só com o endereço do Backend trocado numa cópia em /tmp.
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        sed 's#http://backend:8080#http://host.docker.internal:5080#' /kong/declarative/kong.yml > /tmp/kong.yml &&
+        export KONG_DECLARATIVE_CONFIG=/tmp/kong.yml &&
+        exec /docker-entrypoint.sh kong docker-start

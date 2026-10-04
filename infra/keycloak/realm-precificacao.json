@@ -1,0 +1,16 @@
+{
+  "realm": "precificacao",
+  "enabled": true,
+  "displayName": "Cotação de Projetos",
+  "registrationAllowed": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["pt-BR"],
+  "defaultLocale": "pt-BR",
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Administra materiais, usuários e vê todos os projetos" },
+      { "name": "cliente-interno", "description": "Cota projetos e consulta o catálogo" },
+      { "name": "cliente-externo", "description": "Cota projetos; não acessa a tela do catálogo" }
+    ]
+  }
+}

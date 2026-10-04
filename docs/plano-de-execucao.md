@@ -70,7 +70,7 @@ ProjectPricingAI/
 │   │   └── ProjectPricing.Api/
 │   ├── prompts/                  # prompt de sistema e schema de saída versionados
 │   └── tests/
-│       ├── ...Dominio.Tests / ...Aplicacao.Tests / ...Api.Tests
+│       ├── ...Dominio.Tests / ...Aplicacao.Tests / ...Infraestrutura.Tests / ...Api.Tests
 │       └── Regressao/            # 30 descrições + catálogo de referência + respostas fixas do mock
 └── frontend/
     ├── Dockerfile                # multi-stage: node LTS → nginx estável
@@ -104,6 +104,8 @@ Cada fase termina em PRs `feature/<id>-<descricao>`, com *squash merge*, Convent
 6. Instalar as ferramentas de teste e build aprovadas no `tech-stack.md` §4 e §5: `coverlet.collector`, `@vitest/coverage-v8`, `jsdom`, `@testing-library/jest-dom`, `@testing-library/user-event`, `@vitejs/plugin-react` e `typescript-eslint`.
 
 **Critério de aceite:** `docker compose up` sobe os 5 contêineres saudáveis e o `verificar.sh` passa.
+
+**Situação:** concluída em 04/10/2026, na branch `feature/3-fundacao`. Os 5 contêineres ficaram saudáveis e o `verificar.sh` passou, incluindo o `docker compose build`.
 
 ### F2 — Identidade (Keycloak) e borda (Kong)
 

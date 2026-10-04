@@ -1,6 +1,6 @@
 # Arquitetura e decisões (ADRs)
 
-> Sistema de Cotação de Projetos · versão 0.8 · 04/10/2026
+> Sistema de Cotação de Projetos · versão 0.9 · 04/10/2026
 > Visão de alto nível, atributos de qualidade e registro das decisões de arquitetura.
 
 ## 1. Visão geral
@@ -159,6 +159,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
     - Tools testáveis isoladamente.
     - O LLM não tem como disparar cálculo nem gravação.
     - O `materialId` sugerido pelo LLM é validado contra a lista enviada.
+    - As três tools são uma única implementação: o Servidor MCP a expõe em `/mcp` (rede interna, com token), e o agente a executa dentro do mesmo processo. Assim as exceções de domínio chegam ao agente com o tipo e o `code` preservados.
 
 ### ADR-007 — Cotação congelada na emissão
 

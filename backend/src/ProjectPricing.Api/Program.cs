@@ -5,11 +5,16 @@ using ProjectPricing.Api.Autorizacao;
 using ProjectPricing.Api.Erros;
 using ProjectPricing.Api.Json;
 using ProjectPricing.Api.Materiais;
+using ProjectPricing.Api.Mcp;
 using ProjectPricing.Api.Usuarios;
 using ProjectPricing.Api.Validacao;
+using ProjectPricing.Aplicacao.Agente;
+using ProjectPricing.Aplicacao.Cotacao;
 using ProjectPricing.Aplicacao.Materiais;
 using ProjectPricing.Aplicacao.Usuarios;
+using ProjectPricing.Dominio.Precificacao;
 using ProjectPricing.Infraestrutura;
+using ProjectPricing.Infraestrutura.Llm;
 using ProjectPricing.Infraestrutura.Mongo;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +46,17 @@ builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ServicoCatalogo>();
 
+// Precificação determinística (ADR-001), tools do agente (ADR-006) e Agente de Projetos.
+builder.Services.AddSingleton<IConversorUnidades>(ConversorUnidades.CriarPadrao());
+builder.Services.AddSingleton<IServicoPrecificacao, ServicoPrecificacao>();
+builder.Services.AddScoped<IFerramentasCotacao, FerramentasCotacao>();
+builder.Services.AddScoped<AgenteProjetos>();
+builder.Services.AdicionarClaude(
+    builder.Configuration.GetSection(OpcoesAnthropic.Secao).Get<OpcoesAnthropic>() ?? new OpcoesAnthropic());
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithTools<FerramentasMcp>();
+
 var stringConexaoMongo = builder.Configuration.GetConnectionString("MongoDB")
     ?? throw new InvalidOperationException("ConnectionStrings:MongoDB não configurada.");
 builder.Services.AdicionarInfraestrutura(stringConexaoMongo);
@@ -57,6 +73,8 @@ app.UseAuthorization();
 // Publicada em /openapi/v1.json em todos os ambientes (standards.md §5).
 app.MapOpenApi().AllowAnonymous();
 app.MapHealthChecks("/health").AllowAnonymous();
+// Servidor MCP só na rede interna: o Kong não roteia /mcp (ADR-006).
+app.MapMcp("/mcp").RequireAuthorization(Politicas.PodeCotar);
 
 app.MapGroup("/api/v1")
     .MapearUsuarios()

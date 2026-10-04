@@ -1,3 +1,5 @@
+using ProjectPricing.Dominio.Excecoes;
+
 namespace ProjectPricing.Dominio.Projetos;
 
 /// <summary>Pedido de cotação de um cliente (business-rules.md §6 e §7).</summary>
@@ -42,4 +44,36 @@ public sealed class Projeto
 
     /// <summary>Controle de concorrência otimista (plano, F7).</summary>
     public int Versao { get; private set; }
+
+    /// <summary>Material já cotado neste projeto: mantém o preço congelado no refinamento (RN02).</summary>
+    public ItemProjeto? ItemDoMaterial(string materialId) =>
+        Itens.FirstOrDefault(i => i.MaterialId == materialId);
+
+    /// <summary>
+    /// Grava a cotação calculada pelo Serviço de Precificação (RN01). Na primeira vez o projeto passa
+    /// de rascunho para cotado; no refinamento, a lista de itens é substituída (RN02).
+    /// </summary>
+    public void RegistrarCotacao(IReadOnlyList<ItemProjeto> itens, decimal valorTotal, DateTimeOffset agora)
+    {
+        ArgumentNullException.ThrowIfNull(itens);
+        GarantirQueNaoEstaArquivado();
+        if (itens.Count == 0)
+        {
+            throw new ArgumentException("A cotação precisa de ao menos um item.", nameof(itens));
+        }
+
+        Itens = [.. itens];
+        ValorTotal = valorTotal;
+        Status = StatusProjeto.Cotado;
+        AlteradoEm = agora;
+    }
+
+    /// <summary>Projeto arquivado é somente leitura (RN11).</summary>
+    public void GarantirQueNaoEstaArquivado()
+    {
+        if (Status == StatusProjeto.Arquivado)
+        {
+            throw new ProjetoArquivadoException();
+        }
+    }
 }

@@ -94,6 +94,49 @@ public class MaterialRepositoryTests
         Assert.Equal(1, opcoesUsadas.Limit);
     }
 
+    [Fact]
+    public async Task Listar_ativos_filtra_pelo_status_ativo()
+    {
+        var colecao = new Mock<IMongoCollection<Material>>();
+        FilterDefinition<Material>? filtroUsado = null;
+        colecao
+            .Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Material>>(), It.IsAny<FindOptions<Material, Material>>(), It.IsAny<CancellationToken>()))
+            .Callback<FilterDefinition<Material>, FindOptions<Material, Material>, CancellationToken>((filtro, _, _) => filtroUsado = filtro)
+            .ReturnsAsync(Cursor(NovoMaterial("Chapa")));
+
+        var ativos = await new MaterialRepository(colecao.Object).ListarAtivosAsync(CancellationToken.None);
+
+        Assert.Single(ativos);
+        Assert.Equal(new BsonDocument("status", "ativo"), Renderizar(filtroUsado!));
+    }
+
+    [Fact]
+    public async Task Obter_por_ids_ignora_ids_invalidos_e_nao_consulta_sem_ids_validos()
+    {
+        var colecao = new Mock<IMongoCollection<Material>>(MockBehavior.Strict);
+
+        var nenhum = await new MaterialRepository(colecao.Object).ObterPorIdsAsync(["abc", "m-chapa"], CancellationToken.None);
+
+        Assert.Empty(nenhum);
+    }
+
+    [Fact]
+    public async Task Obter_por_ids_busca_os_ObjectIds_validos()
+    {
+        const string id = "6703e0aa0000000000000001";
+        var colecao = new Mock<IMongoCollection<Material>>();
+        FilterDefinition<Material>? filtroUsado = null;
+        colecao
+            .Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Material>>(), It.IsAny<FindOptions<Material, Material>>(), It.IsAny<CancellationToken>()))
+            .Callback<FilterDefinition<Material>, FindOptions<Material, Material>, CancellationToken>((filtro, _, _) => filtroUsado = filtro)
+            .ReturnsAsync(Cursor(NovoMaterial("Chapa")));
+
+        await new MaterialRepository(colecao.Object).ObterPorIdsAsync([id, id, "invalido"], CancellationToken.None);
+
+        var ids = Renderizar(filtroUsado!)["_id"]["$in"].AsBsonArray;
+        Assert.Equal([ObjectId.Parse(id)], ids.Select(v => v.AsObjectId));
+    }
+
     [Theory]
     [InlineData("pelicula", "Película refletiva", true)]
     [InlineData("CABEÇOTE", "Cabecote de metal", true)]

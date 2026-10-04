@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 using ProjectPricing.Dominio.Excecoes;
 using ProjectPricing.Dominio.Materiais;
@@ -31,6 +32,27 @@ public sealed class MaterialRepository(IMongoCollection<Material> colecao)
         var itens = await cursor.ToListAsync(cancellationToken);
 
         return new PaginaDeMateriais(itens, total);
+    }
+
+    public async Task<IReadOnlyList<Material>> ListarAtivosAsync(CancellationToken cancellationToken)
+    {
+        using var cursor = await Colecao.FindAsync(
+            Filtro.Eq(m => m.Status, StatusMaterial.Ativo), cancellationToken: cancellationToken);
+        return await cursor.ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Material>> ObterPorIdsAsync(
+        IReadOnlyCollection<string> ids,
+        CancellationToken cancellationToken)
+    {
+        var validos = ids.Where(id => ObjectId.TryParse(id, out _)).Distinct().ToList();
+        if (validos.Count == 0)
+        {
+            return [];
+        }
+
+        using var cursor = await Colecao.FindAsync(Filtro.In(m => m.Id, validos), cancellationToken: cancellationToken);
+        return await cursor.ToListAsync(cancellationToken);
     }
 
     public async Task<Material?> BuscarConflitoDeNomeAsync(

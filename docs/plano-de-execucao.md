@@ -177,6 +177,16 @@ Cada fase termina em PRs `feature/<id>-<descricao>`, com *squash merge*, Convent
 
 **Critério de aceite:** `/usuarios/me` responde através do Kong, e os testes das *policies* e do mapeamento de exceções passam.
 
+**Situação:** concluída em 04/10/2026, na branch `feature/5-base-backend`.
+- `/api/v1/usuarios/me` responde pelo Kong para os 3 usuários de teste, cada um com o seu papel.
+- O backend também recusa um token válido do realm sem `aud=precificacao-api`, com `401 NAO_AUTENTICADO`.
+- Os validadores do MongoDB aceitam o formato gravado pelo backend e recusam preço em `double`, unidade inválida e campo obrigatório ausente.
+- Há 94 testes unitários. Toda resposta de erro tem `code`; a tabela de códigos está em `standards.md` §5.
+- Decisões de implementação:
+  - As entidades são lidas do MongoDB pelo construtor privado, nunca pelo público, que valida e define valores iniciais.
+  - Os enums gravam no banco o mesmo código que a API devolve em JSON (atributo `JsonStringEnumMemberName`).
+  - As datas ainda são devolvidas em UTC. O fuso `-03:00` (P3) entra na F4, junto com o primeiro recurso que tem data.
+
 ### F4 — Catálogo de materiais (RF02, RN04, RN10)
 
 - Endpoints `GET/POST/PUT/DELETE /api/v1/materiais`:

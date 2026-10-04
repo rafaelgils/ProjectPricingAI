@@ -1,6 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Abstrações de DI, configuração, logging e health checks do ASP.NET Core (sem pacote extra) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ProjectPricing.Aplicacao\ProjectPricing.Aplicacao.csproj" />
     <ProjectReference Include="..\ProjectPricing.Dominio\ProjectPricing.Dominio.csproj" />
   </ItemGroup>
+
 </Project>

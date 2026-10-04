@@ -1,0 +1,1261 @@
+{
+  "descricao": "30 descrições de referência (plano, F11). Cada rodada traz a resposta fixa do mock do LLM e o resultado esperado. Os valores dos casos cotados são calculados por scripts/regressao/calcular-esperados.mjs, independente do backend.",
+  "casos": [
+    {
+      "id": "R01",
+      "titulo": "Placa com película, medidas em cm",
+      "rodadas": [
+        {
+          "mensagem": "Placa de trânsito 60x60 cm com película refletiva",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60
+              },
+              {
+                "termo": "película refletiva",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.36,
+                "precoUnitario": 105.89,
+                "subtotal": 38.12
+              },
+              {
+                "material": "pelicula-grau-tecnico",
+                "quantidade": 0.36,
+                "precoUnitario": 40.17,
+                "subtotal": 14.46
+              }
+            ],
+            "total": 52.58
+          }
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "titulo": "Duas placas com poste e abraçadeiras (quantidade de peças)",
+      "rodadas": [
+        {
+          "mensagem": "Duas placas de 50x70 cm com película refletiva, um poste de 3 m e 2 abraçadeiras",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "quantidade": 2,
+                "largura": 50,
+                "altura": 70
+              },
+              {
+                "termo": "película refletiva",
+                "unidade": "cm",
+                "quantidade": 2,
+                "largura": 50,
+                "altura": 70
+              },
+              {
+                "termo": "poste",
+                "unidade": "m",
+                "quantidade": 3
+              },
+              {
+                "termo": "abraçadeira",
+                "unidade": "un",
+                "quantidade": 2
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.7,
+                "precoUnitario": 105.89,
+                "subtotal": 74.12
+              },
+              {
+                "material": "pelicula-grau-tecnico",
+                "quantidade": 0.7,
+                "precoUnitario": 40.17,
+                "subtotal": 28.12
+              },
+              {
+                "material": "tubo-galvanizado",
+                "quantidade": 3,
+                "precoUnitario": 24.86,
+                "subtotal": 74.58
+              },
+              {
+                "material": "abracadeira",
+                "quantidade": 2,
+                "precoUnitario": 118,
+                "subtotal": 236
+              }
+            ],
+            "total": 412.82
+          }
+        }
+      ]
+    },
+    {
+      "id": "R03",
+      "titulo": "Área com 4 casas: 33 x 33 cm (RN08)",
+      "rodadas": [
+        {
+          "mensagem": "Uma placa de 33 por 33 cm",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 33,
+                "altura": 33
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.11,
+                "precoUnitario": 105.89,
+                "subtotal": 11.65
+              }
+            ],
+            "total": 11.65
+          }
+        }
+      ]
+    },
+    {
+      "id": "R04",
+      "titulo": "Banner em metros",
+      "rodadas": [
+        {
+          "mensagem": "Banner de 3 x 1 m",
+          "llm": {
+            "itens": [
+              {
+                "termo": "banner",
+                "unidade": "m",
+                "largura": 3,
+                "altura": 1
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "banner-lona",
+                "quantidade": 3,
+                "precoUnitario": 28.7,
+                "subtotal": 86.1
+              }
+            ],
+            "total": 86.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "R05",
+      "titulo": "Material e serviço por hora",
+      "rodadas": [
+        {
+          "mensagem": "2 m² de banner e 4 horas de instalação",
+          "llm": {
+            "itens": [
+              {
+                "termo": "banner",
+                "unidade": "m2",
+                "quantidade": 2
+              },
+              {
+                "termo": "instalação",
+                "unidade": "h",
+                "quantidade": 4
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "banner-lona",
+                "quantidade": 2,
+                "precoUnitario": 28.7,
+                "subtotal": 57.4
+              },
+              {
+                "material": "montador",
+                "quantidade": 4,
+                "precoUnitario": 28.77,
+                "subtotal": 115.08
+              }
+            ],
+            "total": 172.48
+          }
+        }
+      ]
+    },
+    {
+      "id": "R06",
+      "titulo": "Minutos convertidos em horas (0,1666… → 0,17 h)",
+      "rodadas": [
+        {
+          "mensagem": "Um ajudante por 10 minutos",
+          "llm": {
+            "itens": [
+              {
+                "termo": "ajudante",
+                "unidade": "min",
+                "quantidade": 10
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "servente",
+                "quantidade": 0.17,
+                "precoUnitario": 29.05,
+                "subtotal": 4.94
+              }
+            ],
+            "total": 4.94
+          }
+        }
+      ]
+    },
+    {
+      "id": "R07",
+      "titulo": "Dois serviços em minutos",
+      "rodadas": [
+        {
+          "mensagem": "Montagem de 90 minutos com ajudante pelo mesmo tempo",
+          "llm": {
+            "itens": [
+              {
+                "termo": "montagem",
+                "unidade": "min",
+                "quantidade": 90
+              },
+              {
+                "termo": "ajudante",
+                "unidade": "min",
+                "quantidade": 90
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "montador",
+                "quantidade": 1.5,
+                "precoUnitario": 28.77,
+                "subtotal": 43.15
+              },
+              {
+                "material": "servente",
+                "quantidade": 1.5,
+                "precoUnitario": 29.05,
+                "subtotal": 43.57
+              }
+            ],
+            "total": 86.72
+          }
+        }
+      ]
+    },
+    {
+      "id": "R08",
+      "titulo": "Mililitros convertidos em litros",
+      "rodadas": [
+        {
+          "mensagem": "500 ml de tinta esmalte",
+          "llm": {
+            "itens": [
+              {
+                "termo": "tinta esmalte",
+                "unidade": "ml",
+                "quantidade": 500
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "tinta-esmalte",
+                "quantidade": 0.5,
+                "precoUnitario": 31.89,
+                "subtotal": 15.94
+              }
+            ],
+            "total": 15.94
+          }
+        }
+      ]
+    },
+    {
+      "id": "R09",
+      "titulo": "Galão de tinta e servente com fração de hora",
+      "rodadas": [
+        {
+          "mensagem": "Um galão de 3,6 L de tinta esmalte e servente por 2,5 h",
+          "llm": {
+            "itens": [
+              {
+                "termo": "tinta esmalte",
+                "unidade": "L",
+                "quantidade": 3.6
+              },
+              {
+                "termo": "servente",
+                "unidade": "h",
+                "quantidade": 2.5
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "tinta-esmalte",
+                "quantidade": 3.6,
+                "precoUnitario": 31.89,
+                "subtotal": 114.8
+              },
+              {
+                "material": "servente",
+                "quantidade": 2.5,
+                "precoUnitario": 29.05,
+                "subtotal": 72.62
+              }
+            ],
+            "total": 187.42
+          }
+        }
+      ]
+    },
+    {
+      "id": "R10",
+      "titulo": "Medidas em milímetros",
+      "rodadas": [
+        {
+          "mensagem": "Adesivo de 1200 x 800 mm",
+          "llm": {
+            "itens": [
+              {
+                "termo": "adesivo",
+                "unidade": "mm",
+                "largura": 1200,
+                "altura": 800
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "adesivo-vinil",
+                "quantidade": 0.96,
+                "precoUnitario": 372,
+                "subtotal": 357.12
+              }
+            ],
+            "total": 357.12
+          }
+        }
+      ]
+    },
+    {
+      "id": "R11",
+      "titulo": "Fachada em ACM com adesivo aplicado (sinônimos)",
+      "rodadas": [
+        {
+          "mensagem": "Fachada de alumínio composto com 5 m², adesivo e aplicação de adesivo na mesma área",
+          "llm": {
+            "itens": [
+              {
+                "termo": "alumínio composto",
+                "unidade": "m2",
+                "quantidade": 5
+              },
+              {
+                "termo": "adesivo",
+                "unidade": "m2",
+                "quantidade": 5
+              },
+              {
+                "termo": "aplicação de adesivo",
+                "unidade": "m2",
+                "quantidade": 5
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-acm",
+                "quantidade": 5,
+                "precoUnitario": 138.7,
+                "subtotal": 693.5
+              },
+              {
+                "material": "adesivo-vinil",
+                "quantidade": 5,
+                "precoUnitario": 372,
+                "subtotal": 1860
+              },
+              {
+                "material": "plotagem",
+                "quantidade": 5,
+                "precoUnitario": 150,
+                "subtotal": 750
+              }
+            ],
+            "total": 3303.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "R12",
+      "titulo": "Comprimento em centímetros",
+      "rodadas": [
+        {
+          "mensagem": "Poste de 350 cm",
+          "llm": {
+            "itens": [
+              {
+                "termo": "poste",
+                "unidade": "cm",
+                "quantidade": 350
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "tubo-galvanizado",
+                "quantidade": 3.5,
+                "precoUnitario": 24.86,
+                "subtotal": 87.01
+              }
+            ],
+            "total": 87.01
+          }
+        }
+      ]
+    },
+    {
+      "id": "R13",
+      "titulo": "Itens por unidade",
+      "rodadas": [
+        {
+          "mensagem": "10 parafusos e 4 abraçadeiras",
+          "llm": {
+            "itens": [
+              {
+                "termo": "parafuso",
+                "unidade": "un",
+                "quantidade": 10
+              },
+              {
+                "termo": "abraçadeira",
+                "unidade": "un",
+                "quantidade": 4
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "parafuso",
+                "quantidade": 10,
+                "precoUnitario": 1.79,
+                "subtotal": 17.9
+              },
+              {
+                "material": "abracadeira",
+                "quantidade": 4,
+                "precoUnitario": 118,
+                "subtotal": 472
+              }
+            ],
+            "total": 489.9
+          }
+        }
+      ]
+    },
+    {
+      "id": "R14",
+      "titulo": "Área informada em cm²",
+      "rodadas": [
+        {
+          "mensagem": "Placa com 3600 cm²",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm2",
+                "quantidade": 3600
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.36,
+                "precoUnitario": 105.89,
+                "subtotal": 38.12
+              }
+            ],
+            "total": 38.12
+          }
+        }
+      ]
+    },
+    {
+      "id": "R15",
+      "titulo": "Três peças de 40 x 40 cm",
+      "rodadas": [
+        {
+          "mensagem": "3 placas de 40x40",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "quantidade": 3,
+                "largura": 40,
+                "altura": 40
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.48,
+                "precoUnitario": 105.89,
+                "subtotal": 50.83
+              }
+            ],
+            "total": 50.83
+          }
+        }
+      ]
+    },
+    {
+      "id": "R16",
+      "titulo": "Material de preço alto",
+      "rodadas": [
+        {
+          "mensagem": "1 m² de película de alta intensidade",
+          "llm": {
+            "itens": [
+              {
+                "termo": "película de alta intensidade",
+                "unidade": "m2",
+                "quantidade": 1
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "pelicula-tipo-iii",
+                "quantidade": 1,
+                "precoUnitario": 489.38,
+                "subtotal": 489.38
+              }
+            ],
+            "total": 489.38
+          }
+        }
+      ]
+    },
+    {
+      "id": "R17",
+      "titulo": "Área 0,2025 m²: 3ª casa 3, desce (RN08)",
+      "rodadas": [
+        {
+          "mensagem": "Placa de 45 x 45 cm",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 45,
+                "altura": 45
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.2,
+                "precoUnitario": 105.89,
+                "subtotal": 21.18
+              }
+            ],
+            "total": 21.18
+          }
+        }
+      ]
+    },
+    {
+      "id": "R18",
+      "titulo": "Subtotal com 4 casas (RN08)",
+      "rodadas": [
+        {
+          "mensagem": "350 ml de esmalte sintético",
+          "llm": {
+            "itens": [
+              {
+                "termo": "esmalte sintético",
+                "unidade": "ml",
+                "quantidade": 350
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "tinta-esmalte",
+                "quantidade": 0.35,
+                "precoUnitario": 31.89,
+                "subtotal": 11.16
+              }
+            ],
+            "total": 11.16
+          }
+        }
+      ]
+    },
+    {
+      "id": "R19",
+      "titulo": "Similaridade incerta (94%) e confirmação",
+      "rodadas": [
+        {
+          "mensagem": "1 m² de película reflexiva",
+          "llm": {
+            "itens": [
+              {
+                "termo": "película reflexiva",
+                "unidade": "m2",
+                "quantidade": 1
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "confirmar",
+            "sugestoes": [
+              {
+                "termo": "película reflexiva",
+                "material": "pelicula-grau-tecnico",
+                "origem": "similaridade"
+              }
+            ]
+          }
+        },
+        {
+          "mensagem": "Sim, é essa película",
+          "llm": {
+            "itens": [
+              {
+                "termo": "película reflexiva",
+                "unidade": "m2",
+                "quantidade": 1,
+                "materialId": "pelicula-grau-tecnico",
+                "confirmado": true
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "pelicula-grau-tecnico",
+                "quantidade": 1,
+                "precoUnitario": 40.17,
+                "subtotal": 40.17
+              }
+            ],
+            "total": 40.17
+          }
+        }
+      ]
+    },
+    {
+      "id": "R20",
+      "titulo": "Plural que cai na similaridade e confirmação",
+      "rodadas": [
+        {
+          "mensagem": "8 parafusos",
+          "llm": {
+            "itens": [
+              {
+                "termo": "parafusos",
+                "unidade": "un",
+                "quantidade": 8
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "confirmar",
+            "sugestoes": [
+              {
+                "termo": "parafusos",
+                "material": "parafuso",
+                "origem": "similaridade"
+              }
+            ]
+          }
+        },
+        {
+          "mensagem": "Isso, parafuso sextavado",
+          "llm": {
+            "itens": [
+              {
+                "termo": "parafusos",
+                "unidade": "un",
+                "quantidade": 8,
+                "materialId": "parafuso",
+                "confirmado": true
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "parafuso",
+                "quantidade": 8,
+                "precoUnitario": 1.79,
+                "subtotal": 14.32
+              }
+            ],
+            "total": 14.32
+          }
+        }
+      ]
+    },
+    {
+      "id": "R21",
+      "titulo": "Dois termos a confirmar na mesma pergunta",
+      "rodadas": [
+        {
+          "mensagem": "2 m de postes e 2 abracadeiras",
+          "llm": {
+            "itens": [
+              {
+                "termo": "postes",
+                "unidade": "m",
+                "quantidade": 2
+              },
+              {
+                "termo": "abracadeiras",
+                "unidade": "un",
+                "quantidade": 2
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "confirmar",
+            "sugestoes": [
+              {
+                "termo": "postes",
+                "material": "tubo-galvanizado",
+                "origem": "similaridade"
+              },
+              {
+                "termo": "abracadeiras",
+                "material": "abracadeira",
+                "origem": "similaridade"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "R22",
+      "titulo": "Sugestão do agente pelo sentido e confirmação",
+      "rodadas": [
+        {
+          "mensagem": "Um mastro de metal de 3 m",
+          "llm": {
+            "itens": [
+              {
+                "termo": "mastro de metal",
+                "unidade": "m",
+                "quantidade": 3
+              }
+            ]
+          },
+          "sugestoes": [
+            {
+              "termo": "mastro de metal",
+              "materialId": "tubo-galvanizado"
+            }
+          ],
+          "esperado": {
+            "resultado": "confirmar",
+            "sugestoes": [
+              {
+                "termo": "mastro de metal",
+                "material": "tubo-galvanizado",
+                "origem": "agente"
+              }
+            ]
+          }
+        },
+        {
+          "mensagem": "Pode ser o tubo galvanizado",
+          "llm": {
+            "itens": [
+              {
+                "termo": "mastro de metal",
+                "unidade": "m",
+                "quantidade": 3,
+                "materialId": "tubo-galvanizado",
+                "confirmado": true
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "tubo-galvanizado",
+                "quantidade": 3,
+                "precoUnitario": 24.86,
+                "subtotal": 74.58
+              }
+            ],
+            "total": 74.58
+          }
+        }
+      ]
+    },
+    {
+      "id": "R23",
+      "titulo": "Serviço sugerido pelo agente",
+      "rodadas": [
+        {
+          "mensagem": "2 horas de mão de obra",
+          "llm": {
+            "itens": [
+              {
+                "termo": "mão de obra",
+                "unidade": "h",
+                "quantidade": 2
+              }
+            ]
+          },
+          "sugestoes": [
+            {
+              "termo": "mão de obra",
+              "materialId": "montador"
+            }
+          ],
+          "esperado": {
+            "resultado": "confirmar",
+            "sugestoes": [
+              {
+                "termo": "mão de obra",
+                "material": "montador",
+                "origem": "agente"
+              }
+            ]
+          }
+        },
+        {
+          "mensagem": "Sim, montador",
+          "llm": {
+            "itens": [
+              {
+                "termo": "mão de obra",
+                "unidade": "h",
+                "quantidade": 2,
+                "materialId": "montador",
+                "confirmado": true
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "montador",
+                "quantidade": 2,
+                "precoUnitario": 28.77,
+                "subtotal": 57.54
+              }
+            ],
+            "total": 57.54
+          }
+        }
+      ]
+    },
+    {
+      "id": "R24",
+      "titulo": "Item não encontrado (RN03)",
+      "rodadas": [
+        {
+          "mensagem": "Placa 60x60 com cabeçote de metal",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60
+              },
+              {
+                "termo": "cabeçote de metal",
+                "unidade": "un",
+                "quantidade": 1
+              }
+            ]
+          },
+          "sugestoes": [
+            {
+              "termo": "cabeçote de metal",
+              "materialId": null
+            }
+          ],
+          "esperado": {
+            "resultado": "naoEncontrado",
+            "termos": [
+              "cabeçote de metal"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "R25",
+      "titulo": "Não encontrado prevalece sobre confirmação",
+      "rodadas": [
+        {
+          "mensagem": "3 m de postes e uma lâmpada LED",
+          "llm": {
+            "itens": [
+              {
+                "termo": "postes",
+                "unidade": "m",
+                "quantidade": 3
+              },
+              {
+                "termo": "lâmpada LED",
+                "unidade": "un",
+                "quantidade": 1
+              }
+            ]
+          },
+          "sugestoes": [
+            {
+              "termo": "lâmpada LED",
+              "materialId": null
+            }
+          ],
+          "esperado": {
+            "resultado": "naoEncontrado",
+            "termos": [
+              "lâmpada LED"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "R26",
+      "titulo": "Esclarecimento de medida (RN06) e resposta",
+      "rodadas": [
+        {
+          "mensagem": "Quero uma placa com película refletiva",
+          "llm": {
+            "pergunta": "Quais são a largura e a altura da placa?"
+          },
+          "esperado": {
+            "resultado": "esclarecimento",
+            "pergunta": "Quais são a largura e a altura da placa?"
+          }
+        },
+        {
+          "mensagem": "60 x 60 cm",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60
+              },
+              {
+                "termo": "película refletiva",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.36,
+                "precoUnitario": 105.89,
+                "subtotal": 38.12
+              },
+              {
+                "material": "pelicula-grau-tecnico",
+                "quantidade": 0.36,
+                "precoUnitario": 40.17,
+                "subtotal": 14.46
+              }
+            ],
+            "total": 52.58
+          }
+        }
+      ]
+    },
+    {
+      "id": "R27",
+      "titulo": "Unidade que não converte (RN05)",
+      "rodadas": [
+        {
+          "mensagem": "Tinta esmalte para 2 m²",
+          "llm": {
+            "itens": [
+              {
+                "termo": "tinta esmalte",
+                "unidade": "m2",
+                "quantidade": 2
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "medidaInvalida"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R28",
+      "titulo": "Quantidade que zera ao arredondar (RN05)",
+      "rodadas": [
+        {
+          "mensagem": "Placa de 5 x 5 mm",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "mm",
+                "largura": 5,
+                "altura": 5
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "medidaInvalida"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R29",
+      "titulo": "Refinamento: preço congelado dos itens cotados (RN02) e inclusão de item",
+      "rodadas": [
+        {
+          "mensagem": "Placa de 60x60 cm com poste de 3 m",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60
+              },
+              {
+                "termo": "poste",
+                "unidade": "m",
+                "quantidade": 3
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.36,
+                "precoUnitario": 105.89,
+                "subtotal": 38.12
+              },
+              {
+                "material": "tubo-galvanizado",
+                "quantidade": 3,
+                "precoUnitario": 24.86,
+                "subtotal": 74.58
+              }
+            ],
+            "total": 112.7
+          }
+        },
+        {
+          "precosAtualizados": {
+            "chapa-galvanizada": 120,
+            "tubo-galvanizado": 29.9
+          },
+          "mensagem": "Troque para 6 m de poste e inclua 2 abraçadeiras",
+          "llm": {
+            "itens": [
+              {
+                "termo": "placa",
+                "unidade": "cm",
+                "largura": 60,
+                "altura": 60,
+                "materialId": "chapa-galvanizada"
+              },
+              {
+                "termo": "poste",
+                "unidade": "m",
+                "quantidade": 6,
+                "materialId": "tubo-galvanizado"
+              },
+              {
+                "termo": "abraçadeira",
+                "unidade": "un",
+                "quantidade": 2
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "chapa-galvanizada",
+                "quantidade": 0.36,
+                "precoUnitario": 105.89,
+                "subtotal": 38.12
+              },
+              {
+                "material": "tubo-galvanizado",
+                "quantidade": 6,
+                "precoUnitario": 24.86,
+                "subtotal": 149.16
+              },
+              {
+                "material": "abracadeira",
+                "quantidade": 2,
+                "precoUnitario": 118,
+                "subtotal": 236
+              }
+            ],
+            "total": 423.28
+          }
+        }
+      ]
+    },
+    {
+      "id": "R30",
+      "titulo": "Refinamento: remoção de item",
+      "rodadas": [
+        {
+          "mensagem": "2 m² de banner com 4 h de instalação",
+          "llm": {
+            "itens": [
+              {
+                "termo": "banner",
+                "unidade": "m2",
+                "quantidade": 2
+              },
+              {
+                "termo": "instalação",
+                "unidade": "h",
+                "quantidade": 4
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "banner-lona",
+                "quantidade": 2,
+                "precoUnitario": 28.7,
+                "subtotal": 57.4
+              },
+              {
+                "material": "montador",
+                "quantidade": 4,
+                "precoUnitario": 28.77,
+                "subtotal": 115.08
+              }
+            ],
+            "total": 172.48
+          }
+        },
+        {
+          "mensagem": "Retire a instalação",
+          "llm": {
+            "itens": [
+              {
+                "termo": "banner",
+                "unidade": "m2",
+                "quantidade": 2,
+                "materialId": "banner-lona"
+              }
+            ]
+          },
+          "esperado": {
+            "resultado": "cotado",
+            "itens": [
+              {
+                "material": "banner-lona",
+                "quantidade": 2,
+                "precoUnitario": 28.7,
+                "subtotal": 57.4
+              }
+            ],
+            "total": 57.4
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -16,6 +16,9 @@ falha() { printf '\nFALHOU: %s\n' "$1" >&2; exit 1; }
 etapa "Backend: build (avisos como erro)"
 dotnet build "$BACKEND/ProjectPricing.sln" -c Release --nologo -v quiet || falha "build do backend"
 
+etapa "Regressão: valores esperados conferidos pelo cálculo independente"
+node "$RAIZ/scripts/regressao/calcular-esperados.mjs" || falha "valores esperados da suíte de regressão"
+
 etapa "Backend: testes e cobertura (mínimo ${COBERTURA_MINIMA}%)"
 RESULTADOS="$(mktemp -d)"
 trap 'rm -rf "$RESULTADOS"' EXIT

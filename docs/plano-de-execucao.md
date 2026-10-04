@@ -1,6 +1,6 @@
 # Plano de execução — Sistema de Cotação de Projetos
 
-> Versão 0.4 · 04/10/2026
+> Versão 0.5 · 04/10/2026
 > Baseado em `.ai/architecture.md`, `.ai/business-rules.md`, `.ai/standards.md` e `.ai/tech-stack.md` (todos na v0.8, já com as respostas das dúvidas D1 a D25 e dos pontos Q1 a Q11).
 > O desenvolvimento é feito por IA. Por isso o plano não traz equipe nem datas: cada fase vira um ou mais Pull Requests, revisados e aprovados por uma pessoa.
 > Quando a documentação não define um ponto, o plano adota uma **premissa (P#)**. Os pontos que ainda dependem de resposta estão na seção 8 (**Q#**).
@@ -487,6 +487,21 @@ Decisões de implementação:
 - CRUD `/api/v1/usuarios` repassado à Keycloak Admin API (cliente `precificacao-admin`).
 - Tela de usuários para o Admin, com criação de usuário e atribuição de papel (não há autocadastro).
 
+**Situação:** concluída em 04/10/2026, na branch `feature/11-gestao-usuarios`.
+- **API** (`/api/v1/usuarios`, só Admin; o `/me` continua aberto a todos):
+  - `GET` lista com busca e paginação, trazendo o papel do sistema de cada usuário. `GET /{id}` traz o detalhe.
+  - `POST` cria o usuário ativo, com e-mail verificado, papel e **senha temporária**: o Keycloak exige a troca no primeiro login. Responde `201` com `Location`.
+  - `PUT /{id}` altera nome, sobrenome, e-mail, papel e situação. O usuário fica sempre com exatamente um dos três papéis.
+  - `DELETE /{id}` é exclusão lógica: desativa o usuário no Keycloak e responde `204`.
+  - Novos códigos: `USUARIO_DUPLICADO` (409) e `ALTERACAO_PROPRIO_USUARIO` (422). Este último impede o Admin de se desativar ou de tirar o próprio papel `admin`, para o sistema não ficar sem ninguém que gerencie usuários.
+- **Integração:** `KeycloakAdminClient` usa a service account do `precificacao-admin` (só `view-users` e `manage-users`), com o token em cache até 30 s antes de expirar. Como essa conta não lê os papéis do realm, o id do papel vem de `role-mappings/realm/available`. O segredo chega ao `backend` por `Keycloak__AdminClientSecret`, vindo do `.env`.
+- **Frontend:** página `/usuarios` e item "Usuários" no menu, só para o Admin. Tem busca, cadastro, alteração e desativação com confirmação. O Admin logado não vê o botão de se desativar.
+- **Testado de ponta a ponta pelo Kong:**
+  - `cliente-interno` recebe 403. A validação responde 400 com os erros por campo, e a criação responde 201.
+  - Repetir a criação dá 409. A troca de papel funciona: conferido no Keycloak, o papel anterior saiu.
+  - A desativação responde 204 e o usuário fica `enabled=false`; o recurso inexistente dá 404 e o Admin tentando se desativar dá 422.
+  - No Keycloak, o usuário criado ficou com `UPDATE_PASSWORD` pendente.
+
 ### F11 — Suíte de regressão, aceite e release 1.0.0
 
 - **Catálogo de referência:** materiais com preços de exemplo pesquisados na internet durante o desenvolvimento e fixados no repositório, já com os sinônimos mais comuns.
@@ -495,6 +510,23 @@ Decisões de implementação:
 - Demonstração dos critérios de aceite ao PO.
 - OpenAPI e guias de usuário revisados.
 - Tag `v1.0.0` e imagens `1.0.0` geradas no Docker local.
+
+**Situação:** implementada em 04/10/2026, na branch `feature/11-gestao-usuarios` (junto com a F10). Falta só a demonstração ao PO, que é presencial.
+- **Catálogo de referência** (`infra/mongodb/referencia/catalogo-referencia.json`):
+  - 13 itens de sinalização e comunicação visual (10 materiais e 3 serviços), cada um com sinônimos e a fonte do preço. Os preços foram pesquisados em 04/10/2026 em tabelas públicas (SINAPI, SICRO, ORSE) e em licitações.
+  - `scripts/carregar-catalogo-referencia.sh` carrega o catálogo no MongoDB para a demonstração. Só insere o que falta e repete a checagem cruzada de nome e sinônimo da RN10, que o índice único do banco não cobre.
+- **Suíte de regressão** (`SuiteRegressaoTests`, com os casos em `casos-referencia.json`):
+  - 30 casos e 37 rodadas: medidas em mm, cm, m, cm², ml, L, min e h, peças, os exemplos de arredondamento da RN08, similaridade a confirmar, sugestão do agente, não encontrado (inclusive prevalecendo sobre a confirmação), esclarecimento, medida inválida e refinamentos com preço congelado (RN02) e remoção de item.
+  - Roda o agente, as tools, a RN09 e o Serviço de Precificação reais. Só o LLM é simulado, com respostas fixas, e os repositórios ficam em memória. A suíte confere que o agente consumiu exatamente as respostas previstas do LLM e que, fora do caminho feliz, a cotação anterior se mantém.
+  - Os valores esperados vêm de `scripts/regressao/calcular-esperados.mjs`. Esse script refaz a RN05 e a RN08 com frações exatas, sem usar o código do backend, e o `verificar.sh` confere os valores a cada execução. O script já pegou um erro de conta feita à mão (0,7 × 40,17 = 28,119 → R$ 28,12).
+  - Teste de mutação: mudar a regra "3ª casa 5 desce" para "5 sobe" derruba os casos R07, R08 e R09.
+- **OpenAPI revisado:** as 17 operações têm resumo e passaram a documentar as respostas de erro em Problem Details: 401, 403 e 500 em todas, mais 404, 409 e 422 onde se aplicam.
+- **Guia de uso** em `docs/guia-de-uso.md` (cliente, Admin e operação). Os rótulos e mensagens do guia foram conferidos com a interface.
+- **Release 1.0.0:** imagens `project-pricing/backend:1.0.0` e `project-pricing/frontend:1.0.0`, `package.json` e `<Version>` do backend em 1.0.0. O `verificar.sh` passou (375 testes no backend, com 88% de cobertura, e 22 no frontend). A tag `v1.0.0` fica para depois do merge na `main`.
+- **Pendências para o aceite:**
+  - Demonstração ao PO.
+  - Teste com o Claude real: ainda não há chave da Claude API no ambiente, então as respostas do LLM só foram exercitadas pelos mocks.
+  - Teste num navegador real.
 
 ## 5. Sequência e dependências
 

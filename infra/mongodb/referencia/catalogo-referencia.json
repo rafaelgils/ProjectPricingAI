@@ -1,0 +1,148 @@
+{
+  "descricao": "Catálogo de referência (plano, F11): preços de exemplo pesquisados na internet em 04/10/2026 e fixados aqui. Servem à suíte de regressão e à demonstração; não são cotação de fornecedor.",
+  "materiais": [
+    {
+      "chave": "chapa-galvanizada",
+      "nome": "Chapa de aço galvanizado nº 18",
+      "sinonimos": ["placa", "chapa galvanizada"],
+      "tipo": "material",
+      "categoria": "Sinalização",
+      "unidade": "m2",
+      "precoUnitario": 105.89,
+      "fornecedor": "Referência ORSE",
+      "fonte": "ORSE, chapa de aço galvanizado nº 18 (e = 1,2 mm), via orcamentor.com"
+    },
+    {
+      "chave": "pelicula-grau-tecnico",
+      "nome": "Película refletiva grau técnico",
+      "sinonimos": ["película refletiva", "adesivo refletivo"],
+      "tipo": "material",
+      "categoria": "Sinalização",
+      "unidade": "m2",
+      "precoUnitario": 40.17,
+      "fornecedor": "Referência SINAPI",
+      "fonte": "SINAPI 05/2026, insumo 34744 (película refletiva GT 7 anos), https://orcamentor.com/insumo/34744/"
+    },
+    {
+      "chave": "pelicula-tipo-iii",
+      "nome": "Película retrorrefletiva tipo III",
+      "sinonimos": ["película de alta intensidade"],
+      "tipo": "material",
+      "categoria": "Sinalização",
+      "unidade": "m2",
+      "precoUnitario": 489.38,
+      "fornecedor": "Referência SICRO",
+      "fonte": "SICRO 04/2026, película retrorrefletiva tipo III + SI, via orcamentor.com/sicro/materiais"
+    },
+    {
+      "chave": "chapa-acm",
+      "nome": "Chapa de ACM 3 mm",
+      "sinonimos": ["alumínio composto", "placa de ACM"],
+      "tipo": "material",
+      "categoria": "Comunicação visual",
+      "unidade": "m2",
+      "precoUnitario": 138.70,
+      "fornecedor": "Referência SICRO",
+      "fonte": "SICRO 04/2026, chapa de alumínio composto 3,0 mm, https://orcamentor.com/sicro/materiais/M3231/"
+    },
+    {
+      "chave": "tubo-galvanizado",
+      "nome": "Tubo de aço galvanizado 2 polegadas",
+      "sinonimos": ["poste", "coluna", "tubo galvanizado"],
+      "tipo": "material",
+      "categoria": "Sinalização",
+      "unidade": "m",
+      "precoUnitario": 24.86,
+      "fornecedor": "Referência SICRO",
+      "fonte": "SICRO 04/2026, tubo em aço galvanizado 2\", referência nacional, https://orcamentor.com/sicro/materiais/M0962/"
+    },
+    {
+      "chave": "parafuso",
+      "nome": "Parafuso sextavado galvanizado 3/8 com porca",
+      "sinonimos": ["parafuso"],
+      "tipo": "material",
+      "categoria": "Fixação",
+      "unidade": "un",
+      "precoUnitario": 1.79,
+      "fornecedor": "Referência SICRO",
+      "fonte": "SICRO, parafuso de cabeça sextavada em aço galvanizado com porca, D = 9,525 mm, via orcamentor.com"
+    },
+    {
+      "chave": "abracadeira",
+      "nome": "Abraçadeira metálica para placa",
+      "sinonimos": ["abraçadeira"],
+      "tipo": "material",
+      "categoria": "Fixação",
+      "unidade": "un",
+      "precoUnitario": 118.00,
+      "fornecedor": "Referência licitação municipal",
+      "fonte": "Termo de referência de licitação municipal (Rio Grande/RS), abraçadeira em liga metálica"
+    },
+    {
+      "chave": "tinta-esmalte",
+      "nome": "Tinta esmalte sintético fosco",
+      "sinonimos": ["tinta esmalte", "esmalte sintético"],
+      "tipo": "material",
+      "categoria": "Pintura",
+      "unidade": "L",
+      "precoUnitario": 31.89,
+      "fornecedor": "Referência SINAPI",
+      "fonte": "SINAPI, insumo 43648 (tinta esmalte sintético standard fosco), https://orcamentor.com/insumo/43648/"
+    },
+    {
+      "chave": "banner-lona",
+      "nome": "Banner em lona 380 g impresso",
+      "sinonimos": ["banner", "lona impressa"],
+      "tipo": "material",
+      "categoria": "Comunicação visual",
+      "unidade": "m2",
+      "precoUnitario": 28.70,
+      "fornecedor": "Referência proposta pública",
+      "fonte": "Proposta em licitação de Santa Cruz do Rio Pardo/SP, banner em lona 380 g/m² com impressão digital"
+    },
+    {
+      "chave": "adesivo-vinil",
+      "nome": "Adesivo vinil impresso",
+      "sinonimos": ["vinil adesivo", "adesivo"],
+      "tipo": "material",
+      "categoria": "Comunicação visual",
+      "unidade": "m2",
+      "precoUnitario": 372.00,
+      "fornecedor": "Referência TJAC",
+      "fonte": "Pregão do TJAC, adesivo vinil de alta durabilidade para chapa galvanizada"
+    },
+    {
+      "chave": "plotagem",
+      "nome": "Plotagem com aplicação",
+      "sinonimos": ["aplicação de adesivo"],
+      "tipo": "servico",
+      "categoria": "Comunicação visual",
+      "unidade": "m2",
+      "precoUnitario": 150.00,
+      "fornecedor": "Referência TJAC",
+      "fonte": "Pregão do TJAC, serviço de plotagem com aplicação (faixa de R$ 150 a R$ 300 o m²; usado o menor)"
+    },
+    {
+      "chave": "montador",
+      "nome": "Montador de estruturas metálicas",
+      "sinonimos": ["montagem", "instalação"],
+      "tipo": "servico",
+      "categoria": "Mão de obra",
+      "unidade": "h",
+      "precoUnitario": 28.77,
+      "fornecedor": "Referência SINAPI",
+      "fonte": "SINAPI, montador de estruturas metálicas com encargos complementares, via orcamentor.com"
+    },
+    {
+      "chave": "servente",
+      "nome": "Servente",
+      "sinonimos": ["ajudante"],
+      "tipo": "servico",
+      "categoria": "Mão de obra",
+      "unidade": "h",
+      "precoUnitario": 29.05,
+      "fornecedor": "Referência SINAPI",
+      "fonte": "SINAPI, servente com encargos complementares, via orcamentor.com"
+    }
+  ]
+}

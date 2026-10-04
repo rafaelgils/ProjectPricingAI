@@ -17,4 +17,5 @@ export const permissoes = {
   verCatalogo: (papeis: Papel[]) => papeis.includes('admin') || papeis.includes('cliente-interno'),
   gerenciarCatalogo: (papeis: Papel[]) => papeis.includes('admin'),
   verTodosOsProjetos: (papeis: Papel[]) => papeis.includes('admin'),
+  gerenciarUsuarios: (papeis: Papel[]) => papeis.includes('admin'),
 };

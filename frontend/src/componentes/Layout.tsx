@@ -25,6 +25,11 @@ function Layout() {
                 <NavLink to="/catalogo">Catálogo</NavLink>
               </li>
             )}
+            {permissoes.gerenciarUsuarios(papeis) && (
+              <li>
+                <NavLink to="/usuarios">Usuários</NavLink>
+              </li>
+            )}
           </ul>
         </nav>
         <div className="usuario">

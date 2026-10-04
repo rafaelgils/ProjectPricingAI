@@ -58,7 +58,7 @@ services:
   backend:
     build:
       context: ./backend
-    image: project-pricing/backend:0.1.0
+    image: project-pricing/backend:1.0.0
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -69,6 +69,7 @@ services:
       Keycloak__UrlPublica: http://localhost:8080/realms/precificacao
       Keycloak__UrlInterna: http://keycloak:8080/realms/precificacao
       Keycloak__ExigirHttpsMetadata: "false"
+      Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?defina KEYCLOAK_ADMIN_CLIENT_SECRET no .env}
       Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
     depends_on:
       mongodb:
@@ -116,7 +117,7 @@ services:
   frontend:
     build:
       context: ./frontend
-    image: project-pricing/frontend:0.1.0
+    image: project-pricing/frontend:1.0.0
     environment:
       # Lidos na subida e gravados no /env.js (plano, P5)
       API_URL: http://localhost:8000

@@ -118,44 +118,10 @@ arquitetura e Claude Code — agente de IA na IDE — para a implementação).
 
 ## Como executar localmente
 
-Pré-requisitos: **Docker** e **Docker Compose** instalados. O ambiente local roda em HTTP.
-
-1. Copie o arquivo de exemplo de variáveis de ambiente e preencha os valores:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Gere a chave RSA do realm (grava a chave privada no `.env` e a pública no `kong.yml`):
-
-   ```bash
-   ./scripts/gerar-chave-realm.sh
-   ```
-
-3. Preencha a `ANTHROPIC_API_KEY` no `.env` (necessária para a cotação com o agente).
-
-4. Suba todos os contêineres:
-
-   ```bash
-   docker compose up -d
-   ```
-
-5. (Opcional) Carregue o catálogo de materiais de referência:
-
-   ```bash
-   ./scripts/carregar-catalogo-referencia.sh
-   ```
-
-### Portas e endereços
-
-| Serviço | Endereço |
-| --- | --- |
-| Frontend (SPA) | http://localhost:3000 |
-| API via Kong (Gateway) | http://localhost:8000 |
-| Contrato OpenAPI | http://localhost:8000/openapi/v1.json |
-| Keycloak (login/console) | http://localhost:8080 |
-
-> O backend e o MongoDB ficam apenas na rede interna do Docker, sem exposição ao usuário.
+O passo a passo completo — o que instalar, como configurar as chaves (`.env`), como subir o
+ambiente com Docker, portas e endereços, e como depurar Backend e Frontend — está no
+**[guia de debug](docs/guia-de-debug.md)**. Para o uso do sistema no dia a dia, veja o
+**[guia de uso](docs/guia-de-uso.md)**.
 
 ## Estrutura do repositório
 

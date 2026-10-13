@@ -333,7 +333,7 @@ public class AgenteProjetosTests
     {
         var relogio = new Mock<TimeProvider>();
         relogio.Setup(r => r.GetUtcNow()).Returns(Agora);
-        var agente = new AgenteProjetos(_chat.Object, _ferramentas.Object, _conversas.Object, relogio.Object, NullLogger<AgenteProjetos>.Instance);
+        var agente = new AgenteProjetos(new InterpretadorDeDescricao(_chat.Object, _ferramentas.Object), new ResolvedorDeMateriais(_chat.Object, _ferramentas.Object), _ferramentas.Object, _conversas.Object, relogio.Object, NullLogger<AgenteProjetos>.Instance);
         return agente.ProcessarAsync(_projeto, _conversa, mensagem, CancellationToken.None);
     }
 

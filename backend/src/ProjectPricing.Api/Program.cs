@@ -79,6 +79,8 @@ builder.Services.AddScoped<ServicoCatalogo>();
 builder.Services.AddSingleton<IConversorUnidades>(ConversorUnidades.CriarPadrao());
 builder.Services.AddSingleton<IServicoPrecificacao, ServicoPrecificacao>();
 builder.Services.AddScoped<IFerramentasCotacao, FerramentasCotacao>();
+builder.Services.AddScoped<IInterpretadorDeDescricao, InterpretadorDeDescricao>();
+builder.Services.AddScoped<IResolvedorDeMateriais, ResolvedorDeMateriais>();
 builder.Services.AddScoped<IAgenteProjetos, AgenteProjetos>();
 builder.Services.AddScoped<ServicoProjetos>();
 builder.Services.AddScoped<CondutorConversa>();

@@ -102,6 +102,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | ADR-011 | Multi-tenant por coleção compartilhada com `tenantId` | Aceita | Refatoração |
 | ADR-012 | Idempotência com `Idempotency-Key` nos POSTs do agente | Aceita | Refatoração |
 | ADR-013 | Camada de segurança: limites de uso, defesa de prompt e segredos | Aceita | Refatoração |
+| ADR-014 | Monolito modular com fronteiras verificadas por testes | Aceita | Refatoração |
 
 ---
 
@@ -250,6 +251,19 @@ O RNF03 (disponibilidade) foi retirado do MVP.
     - O abuso por usuário e por empresa fica limitado e o custo do LLM, previsível; os limites são por processo (em memória), então com várias réplicas do backend o teto efetivo multiplica. Um contador distribuído fica como evolução.
     - Quem copiar o `.env.example` sem editar os segredos não consegue subir o backend, o que é intencional.
     - A validação de prompt reduz, mas não elimina, o risco de injeção; a barreira final continua sendo o fato de o LLM não poder calcular nem gravar.
+
+### ADR-014 — Monolito modular com fronteiras verificadas por testes
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** o backend é um único processo. Isso é adequado ao porte do MVP (um contêiner, uma implantação, transações simples), mas a separação em camadas era só convenção: nada impedia, por exemplo, o catálogo de depender do agente, e o `AgenteProjetos` (374 linhas) concentrava interpretação, correspondência com o catálogo e orquestração.
+- **Alternativas:** (a) extrair o agente num segundo serviço: isola o custo e a escala do LLM, mas traz rede, versionamento de contrato, autenticação entre serviços e tracing distribuído sem haver, hoje, necessidade de escalar de forma independente; (b) manter o monolito sem regras; (c) **monolito modular**, com módulos de fronteira explícita e regra verificada por teste.
+- **Decisão:** alternativa (c). Módulos da camada de aplicação: **Catálogo** (`Aplicacao.Materiais`), **Cotação** (`Aplicacao.Projetos`, `Aplicacao.Agente`, `Aplicacao.Cotacao`) e **Identidade** (`Aplicacao.Usuarios`). `IUsuarioAtual` e `ITenantAtual` são o núcleo compartilhado.
+    - A regra de dependência entre camadas e as fronteiras entre módulos são verificadas por `FronteirasDeArquiteturaTests`, por reflexão, sem biblioteca nova: o domínio não referencia nenhuma outra camada nem MongoDB, Anthropic ou ASP.NET; a aplicação não referencia infraestrutura nem API; Catálogo e Identidade não conhecem Cotação; Cotação não conhece o serviço do Catálogo.
+    - O `AgenteProjetos` virou orquestrador (146 linhas) sobre dois colaboradores com contrato próprio: `IInterpretadorDeDescricao` (prompt, tool `buscarMateriais`, validação da saída) e `IResolvedorDeMateriais` (RN09, passos 1 e 2).
+- **Consequências:**
+    - Cada colaborador é testável e substituível sem tocar nos outros; o LLM continua isolado atrás de `IChatClient`.
+    - O agente pode ser extraído para um serviço próprio no futuro seguindo as costuras já existentes (`IAgenteProjetos` e `IFerramentasCotacao`), sem reescrever o domínio. Essa extração só se justifica se o consumo do LLM exigir escala ou implantação independentes; fica registrada como evolução, não como débito.
+    - O teste de arquitetura passa a ser a documentação executável das fronteiras.
 
 ---
 

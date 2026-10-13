@@ -35,7 +35,7 @@ public sealed class OpcoesKeycloakAdmin
 /// Repasse à Keycloak Admin API (ADR-004, RF10) com a service account do cliente precificacao-admin,
 /// que só tem os papéis view-users e manage-users.
 /// </summary>
-public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opcoes, TimeProvider relogio) : IGestaoIdentidade
+public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opcoes, TimeProvider relogio) : IGestaoIdentidade, IDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -191,12 +191,13 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
                 return _token;
             }
 
-            using var resposta = await http.PostAsync(opcoes.UrlToken, new FormUrlEncodedContent(new Dictionary<string, string>
+            using var formulario = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "client_credentials",
                 ["client_id"] = opcoes.ClientId,
                 ["client_secret"] = opcoes.ClientSecret ?? string.Empty,
-            }), cancellationToken);
+            });
+            using var resposta = await http.PostAsync(opcoes.UrlToken, formulario, cancellationToken);
             resposta.EnsureSuccessStatusCode();
 
             var token = await resposta.Content.ReadFromJsonAsync<TokenKeycloak>(Json, cancellationToken)
@@ -210,6 +211,8 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
             _travaToken.Release();
         }
     }
+
+    public void Dispose() => _travaToken.Dispose();
 
     private sealed class UsuarioKeycloak
     {

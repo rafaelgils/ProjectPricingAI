@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using ProjectPricing.Aplicacao.Idempotencia;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Conversas;
 using ProjectPricing.Dominio.Materiais;
@@ -32,9 +34,12 @@ public static class InjecaoDeDependencia
         services.AddSingleton(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<Projeto>(NomesColecoes.Projetos));
         services.AddSingleton(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<Conversa>(NomesColecoes.Conversas));
 
+        services.AddSingleton(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<BsonDocument>(NomesColecoes.ChavesIdempotencia));
+
         services.AddScoped<IMaterialRepository, MaterialRepository>();
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
         services.AddScoped<IConversaRepository, ConversaRepository>();
+        services.AddScoped<IArmazemIdempotencia, ArmazemIdempotenciaMongo>();
 
         return services;
     }

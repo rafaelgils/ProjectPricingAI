@@ -119,3 +119,11 @@ banco.materiais.createIndex(
 banco.projetos.createIndex({ tenantId: 1, clienteId: 1 }, { name: 'ix_projetos_tenant_clienteId' });
 
 banco.conversas.createIndex({ projetoId: 1 }, { name: 'ux_conversas_projetoId', unique: true });
+
+// Idempotência (ADR-012): uma chave por tenant e usuário; o TTL descarta as chaves depois de 24 h.
+banco.createCollection('chavesIdempotencia');
+banco.chavesIdempotencia.createIndex(
+  { tenantId: 1, usuarioId: 1, chave: 1 },
+  { name: 'ux_idempotencia_tenant_usuario_chave', unique: true },
+);
+banco.chavesIdempotencia.createIndex({ criadoEm: 1 }, { name: 'ttl_idempotencia_criadoEm', expireAfterSeconds: 86400 });

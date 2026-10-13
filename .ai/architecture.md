@@ -100,6 +100,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | ADR-009 | Um contêiner Docker por camada | Aceita | — |
 | ADR-010 | Kong valida o JWT com a chave pública fixa do realm | Aceita | Dúvida D7 do plano |
 | ADR-011 | Multi-tenant por coleção compartilhada com `tenantId` | Aceita | Refatoração |
+| ADR-012 | Idempotência com `Idempotency-Key` nos POSTs do agente | Aceita | Refatoração |
 
 ---
 
@@ -221,6 +222,19 @@ O RNF03 (disponibilidade) foi retirado do MVP.
     - Ferramentas MCP e agente herdam o isolamento, pois usam os mesmos repositórios.
     - Um administrador "da plataforma" (entre tenants) não existe neste MVP e fica como evolução.
     - O isolamento depende do filtro no repositório; o risco de esquecê-lo é reduzido por estar na classe base e coberto por testes.
+
+### ADR-012 — Idempotência com `Idempotency-Key` nos POSTs do agente
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** `POST /projetos` e `POST /projetos/{id}/mensagens` não eram idempotentes. Duplo clique, retry de rede ou reconexão do SSE criavam projetos duplicados e repetiam a chamada paga à Claude API.
+- **Decisão:** o cliente envia o cabeçalho opcional `Idempotency-Key` (1 a 128 caracteres ASCII visíveis; o frontend usa um UUID por ação do usuário). Um filtro de endpoint (`FiltroIdempotencia`) decide, antes do handler:
+    - chave nova → processa e **guarda a resposta SSE** exatamente como enviada (status, `Location` e corpo);
+    - chave repetida e concluída → reenvia a resposta guardada com o cabeçalho `Idempotent-Replayed: true`, sem criar projeto nem chamar o LLM;
+    - chave repetida ainda em processamento → `409 REQUISICAO_EM_ANDAMENTO`;
+    - chave repetida com outro conteúdo (método, caminho ou corpo) → `422 IDEMPOTENCIA_CONFLITO`.
+- **Escopo e armazenamento:** a chave vale por `tenantId` + usuário. Fica na coleção `chavesIdempotencia`; um índice único decide de forma atômica qual chamada simultânea processa, e um índice TTL descarta as chaves após 24 h.
+- **O que não é guardado:** falhas transitórias (`FALHA_PROCESSAMENTO`, `ERRO_INTERNO`), desistência do cliente e erros HTTP comuns antes do stream. Nesses casos a chave é liberada e a nova tentativa processa de novo. Erros de negócio determinísticos (itens não encontrados, esclarecimento) são guardados.
+- **Consequências:** o cabeçalho é opcional, então clientes antigos continuam funcionando sem proteção. Se o servidor cair depois de criar o projeto e antes de concluir, a nova tentativa cria outro projeto em rascunho; aceitável no MVP.
 
 ---
 

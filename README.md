@@ -123,6 +123,12 @@ ambiente com Docker, portas e endereços, e como depurar Backend e Frontend — 
 **[guia de debug](docs/guia-de-debug.md)**. Para o uso do sistema no dia a dia, veja o
 **[guia de uso](docs/guia-de-uso.md)**.
 
+## Refatoração e modernização
+
+A branch `refactoring` traz a auditoria técnica e a modernização do sistema (multi-tenant, idempotência, camada de segurança,
+agente desacoplado e fronteiras verificadas por testes). Documentação em [`docs/refactoring/`](docs/refactoring/): plano, baseline,
+relatório de modernização, prompts utilizados e guia de migração.
+
 ## Estrutura do repositório
 
 ```

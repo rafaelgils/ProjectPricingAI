@@ -1,5 +1,11 @@
 # Plano de Refatoração — ProjectPricingAI
 
+> **Status:** executado na branch `refactoring`. Resultado, decisões e o que ficou de fora estão no
+> [relatório de modernização](relatorio-modernizacao.md); as decisões das seções 9 foram tomadas e registradas nos ADR-011 a ADR-015.
+> Itens executados: Fase 0, A1, A2, A3 (como monolito modular), A4, A5, S1, S2, S3 (CORS), S4 (validação de segredos), S6 (já existia
+> no `verificar.sh`), Q2, Q3 (parcial), Q4, Q5 (já ativo), Q7 (lazy loading), Q8 (Keycloak). Não executados: A6/S5 (auditoria/outbox), Q6
+> (OpenTelemetry, exige aprovação de pacotes) e S7 (autorização por recurso já concentrada em `ServicoProjetos` e nos repositórios).
+
 > Branch: `refactoring` (criada a partir de `main`). Objetivo da atividade: auditoria técnica e modernização, **sem novas funcionalidades de negócio**. Estrutura baseada no roteiro da Aula 4 (Blindagem → Transformação → Validação).
 
 ## 1. Ideias do grupo (ponto de partida)

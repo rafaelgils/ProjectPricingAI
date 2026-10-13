@@ -219,11 +219,11 @@ public sealed partial class AgenteProjetos(
         foreach (var material in catalogo.Values)
         {
             pedido.AppendLine(CultureInfo.InvariantCulture,
-                $"- materialId={material.Id}; nome={material.Nome}; categoria={material.Categoria}; unidade={CodigosEnum<UnidadeMedida>.Codigo(material.Unidade)}");
+                $"- materialId={material.Id}; nome={SegurancaDoPrompt.Linha(material.Nome)}; categoria={SegurancaDoPrompt.Linha(material.Categoria)}; unidade={CodigosEnum<UnidadeMedida>.Codigo(material.Unidade)}");
         }
 
         pedido.AppendLine().AppendLine("Termos sem correspondência:");
-        termos.ForEach(t => pedido.AppendLine(CultureInfo.InvariantCulture, $"- {t}"));
+        termos.ForEach(t => pedido.AppendLine(CultureInfo.InvariantCulture, $"- {SegurancaDoPrompt.Linha(t)}"));
 
         List<ChatMessage> mensagens = [new(ChatRole.System, PromptsAgente.Sugestao), new(ChatRole.User, pedido.ToString())];
         var resposta = await chat.GetResponseAsync<SugestoesLlm>(mensagens, OpcoesJson, cancellationToken: cancellationToken);
@@ -232,7 +232,8 @@ public sealed partial class AgenteProjetos(
 
         foreach (var termo in termos)
         {
-            var id = sugeridos.FirstOrDefault(s => s.Termo == termo)?.MaterialId;
+            var termoEnviado = SegurancaDoPrompt.Linha(termo);
+            var id = sugeridos.FirstOrDefault(s => s.Termo == termoEnviado)?.MaterialId;
             if (id is not null && catalogo.TryGetValue(id, out var material))
             {
                 resolucao.Sugestoes.Add(new SugestaoMaterial(termo, material.Id!, material.Nome, OrigemSugestao.Agente, null));
@@ -271,7 +272,7 @@ public sealed partial class AgenteProjetos(
             foreach (var item in projeto.Itens)
             {
                 contexto.AppendLine(CultureInfo.InvariantCulture,
-                    $"- materialId={item.MaterialId}; nome={item.NomeSnapshot}; quantidade={item.Quantidade}; unidade={CodigosEnum<UnidadeMedida>.Codigo(item.Unidade)}");
+                    $"- materialId={item.MaterialId}; nome={SegurancaDoPrompt.Linha(item.NomeSnapshot)}; quantidade={item.Quantidade}; unidade={CodigosEnum<UnidadeMedida>.Codigo(item.Unidade)}");
             }
         }
 
@@ -282,7 +283,7 @@ public sealed partial class AgenteProjetos(
             foreach (var sugestao in pendentes)
             {
                 contexto.AppendLine(CultureInfo.InvariantCulture,
-                    $"- termo \"{sugestao.Termo}\" → materialId={sugestao.MaterialId}; nome={sugestao.Nome}");
+                    $"- termo \"{SegurancaDoPrompt.Linha(sugestao.Termo)}\" → materialId={sugestao.MaterialId}; nome={SegurancaDoPrompt.Linha(sugestao.Nome)}");
             }
         }
 
@@ -330,7 +331,8 @@ public sealed partial class AgenteProjetos(
     {
         TipoInterpretacao.Esclarecimento => !string.IsNullOrWhiteSpace(interpretacao.Pergunta),
         _ => interpretacao.Itens is { Count: > 0 }
-             && interpretacao.Itens.All(i => !string.IsNullOrWhiteSpace(i.Termo) && !string.IsNullOrWhiteSpace(i.Unidade)),
+             && interpretacao.Itens.All(i => !string.IsNullOrWhiteSpace(i.Termo) && !string.IsNullOrWhiteSpace(i.Unidade))
+             && SegurancaDoPrompt.DentroDosLimites(interpretacao),
     };
 
     /// <summary>Recusa dos classificadores de segurança (stop_reason refusal) é falha de processamento (RN12).</summary>

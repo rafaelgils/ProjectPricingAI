@@ -101,6 +101,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | ADR-010 | Kong valida o JWT com a chave pública fixa do realm | Aceita | Dúvida D7 do plano |
 | ADR-011 | Multi-tenant por coleção compartilhada com `tenantId` | Aceita | Refatoração |
 | ADR-012 | Idempotência com `Idempotency-Key` nos POSTs do agente | Aceita | Refatoração |
+| ADR-013 | Camada de segurança: limites de uso, defesa de prompt e segredos | Aceita | Refatoração |
 
 ---
 
@@ -235,6 +236,20 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 - **Escopo e armazenamento:** a chave vale por `tenantId` + usuário. Fica na coleção `chavesIdempotencia`; um índice único decide de forma atômica qual chamada simultânea processa, e um índice TTL descarta as chaves após 24 h.
 - **O que não é guardado:** falhas transitórias (`FALHA_PROCESSAMENTO`, `ERRO_INTERNO`), desistência do cliente e erros HTTP comuns antes do stream. Nesses casos a chave é liberada e a nova tentativa processa de novo. Erros de negócio determinísticos (itens não encontrados, esclarecimento) são guardados.
 - **Consequências:** o cabeçalho é opcional, então clientes antigos continuam funcionando sem proteção. Se o servidor cair depois de criar o projeto e antes de concluir, a nova tentativa cria outro projeto em rascunho; aceitável no MVP.
+
+### ADR-013 — Camada de segurança: limites de uso, defesa de prompt e segredos
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** a segurança se resumia à validação do JWT (Kong e backend). Não havia limite de uso, e cada cotação é uma chamada paga à Claude API; o texto do cliente e os nomes do catálogo entravam crus nos prompts; um `.env` esquecido com valores de exemplo subia sem aviso.
+- **Decisão:**
+    - **Limites de uso em duas camadas.** O Kong aplica `rate-limiting` por IP (600/min). O backend aplica `AddRateLimiter` encadeado: 120 requisições/min por usuário em qualquer rota; 10 cotações/mensagens por minuto por usuário e 300 por hora por tenant nos POSTs que acionam o agente. Excesso responde `429` em Problem Details, com `code = LIMITE_DE_USO_EXCEDIDO` e `Retry-After`. Os valores vêm da seção `LimitesDeUso`.
+    - **Defesa de prompt em profundidade.** Já valiam: o LLM só recebe `buscarMateriais`; cálculo e gravação são do código (ADR-001, ADR-006); `materialId` sugerido é validado contra a lista enviada. Passam a valer também: (1) todo texto interpolado em prompt (termos, nomes e categorias do catálogo, itens do projeto) passa por `SegurancaDoPrompt.Linha`, que remove quebras de linha e caracteres de controle e limita o tamanho, impedindo seções ou itens falsos; (2) a saída do LLM é limitada (no máximo 50 itens, termos de até 200 caracteres, medidas até 1.000.000.000), e o que passar disso é falha de processamento; (3) os prompts versionados ganham a regra de tratar o texto do cliente e do catálogo como dado, nunca como instrução.
+    - **Segredos.** `ValidadorDeSegredos` derruba a subida se `ConnectionStrings:MongoDB`, `Keycloak:AdminClientSecret` ou `Anthropic:ApiKey` contiverem o prefixo de exemplo `troque-`. A mensagem cita só o nome da chave, nunca o valor.
+    - **CORS.** O Kong passa a aceitar o cabeçalho `Idempotency-Key` e a expor `Idempotent-Replayed` e `Retry-After`.
+- **Consequências:**
+    - O abuso por usuário e por empresa fica limitado e o custo do LLM, previsível; os limites são por processo (em memória), então com várias réplicas do backend o teto efetivo multiplica. Um contador distribuído fica como evolução.
+    - Quem copiar o `.env.example` sem editar os segredos não consegue subir o backend, o que é intencional.
+    - A validação de prompt reduz, mas não elimina, o risco de injeção; a barreira final continua sendo o fato de o LLM não poder calcular nem gravar.
 
 ---
 

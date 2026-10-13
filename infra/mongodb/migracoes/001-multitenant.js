@@ -4,6 +4,7 @@
 // 1. Atribui o tenant padrão aos documentos que ainda não têm tenantId.
 // 2. Troca os índices únicos globais por índices compostos com tenantId.
 // 3. Passa a exigir tenantId nos validadores das coleções.
+// 4. Cria os índices da coleção de chaves de idempotência (ADR-012).
 //
 // Uso (a partir da raiz do repositório):
 //   ./scripts/migrar-para-multitenant.sh [tenant-padrao]
@@ -42,5 +43,12 @@ for (const colecao of ['materiais', 'projetos', 'conversas']) {
     banco.runCommand({ collMod: colecao, validator: { $jsonSchema: esquema } });
   }
 }
+
+// Idempotência (ADR-012): a coleção é criada pelo próprio índice, se ainda não existir.
+banco.chavesIdempotencia.createIndex(
+  { tenantId: 1, usuarioId: 1, chave: 1 },
+  { name: 'ux_idempotencia_tenant_usuario_chave', unique: true },
+);
+banco.chavesIdempotencia.createIndex({ criadoEm: 1 }, { name: 'ttl_idempotencia_criadoEm', expireAfterSeconds: 86400 });
 
 print('Migração multi-tenant concluída.');

@@ -21,8 +21,9 @@ banco.createCollection('materiais', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['nome', 'sinonimos', 'tipo', 'categoria', 'unidade', 'precoUnitario', 'fornecedor', 'status', 'atualizadoEm'],
+      required: ['tenantId', 'nome', 'sinonimos', 'tipo', 'categoria', 'unidade', 'precoUnitario', 'fornecedor', 'status', 'atualizadoEm'],
       properties: {
+        tenantId: textoObrigatorio,
         nome: textoObrigatorio,
         sinonimos: { bsonType: 'array', items: textoObrigatorio },
         tipo: { enum: ['material', 'servico'] },
@@ -41,8 +42,9 @@ banco.createCollection('projetos', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['clienteId', 'descricao', 'itens', 'status', 'criadoEm', 'alteradoEm', 'versao'],
+      required: ['tenantId', 'clienteId', 'descricao', 'itens', 'status', 'criadoEm', 'alteradoEm', 'versao'],
       properties: {
+        tenantId: textoObrigatorio,
         clienteId: textoObrigatorio,
         descricao: textoObrigatorio,
         itens: {
@@ -74,8 +76,9 @@ banco.createCollection('conversas', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['projetoId', 'mensagens'],
+      required: ['tenantId', 'projetoId', 'mensagens'],
       properties: {
+        tenantId: textoObrigatorio,
         projetoId: { bsonType: 'objectId' },
         mensagens: {
           bsonType: 'array',
@@ -97,18 +100,22 @@ banco.createCollection('conversas', {
 // Ignora maiúsculas e acentos (RN10)
 const collationPt = { locale: 'pt', strength: 1 };
 
-banco.materiais.createIndex({ nome: 1 }, { name: 'ux_materiais_nome', unique: true, collation: collationPt });
+// Multi-tenant (ADR-011): a unicidade vale dentro de cada empresa, nunca entre empresas.
+banco.materiais.createIndex(
+  { tenantId: 1, nome: 1 },
+  { name: 'ux_materiais_tenant_nome', unique: true, collation: collationPt },
+);
 // Parcial: materiais sem sinônimos (lista vazia) não colidem entre si no índice único.
 banco.materiais.createIndex(
-  { sinonimos: 1 },
+  { tenantId: 1, sinonimos: 1 },
   {
-    name: 'ux_materiais_sinonimos',
+    name: 'ux_materiais_tenant_sinonimos',
     unique: true,
     collation: collationPt,
     partialFilterExpression: { 'sinonimos.0': { $exists: true } },
   },
 );
 
-banco.projetos.createIndex({ clienteId: 1 }, { name: 'ix_projetos_clienteId' });
+banco.projetos.createIndex({ tenantId: 1, clienteId: 1 }, { name: 'ix_projetos_tenant_clienteId' });
 
 banco.conversas.createIndex({ projetoId: 1 }, { name: 'ux_conversas_projetoId', unique: true });

@@ -1,9 +1,10 @@
+using ProjectPricing.Dominio.Tenancy;
 using ProjectPricing.Dominio.Comum;
 
 namespace ProjectPricing.Dominio.Materiais;
 
 /// <summary>Insumo ou serviço do catálogo (business-rules.md RN04 e RN10).</summary>
-public sealed class Material
+public sealed class Material : IPertenceAoTenant
 {
     public Material(
         string nome,
@@ -31,6 +32,16 @@ public sealed class Material
     }
 
     public string? Id { get; private set; }
+
+    /// <summary>Empresa dona do registro; definida pelo repositório na inserção (ADR-011).</summary>
+    public string TenantId { get; private set; } = string.Empty;
+
+    public void DefinirTenant(string tenantId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+
+        TenantId = tenantId;
+    }
 
     public string Nome { get; private set; }
 

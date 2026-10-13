@@ -99,6 +99,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | ADR-008 | LLM: Anthropic Claude Opus 5.5 | Aceita | — |
 | ADR-009 | Um contêiner Docker por camada | Aceita | — |
 | ADR-010 | Kong valida o JWT com a chave pública fixa do realm | Aceita | Dúvida D7 do plano |
+| ADR-011 | Multi-tenant por coleção compartilhada com `tenantId` | Aceita | Refatoração |
 
 ---
 
@@ -202,6 +203,24 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 - **Contexto:** o Kong OSS 3.9 é a última linha com imagens OSS. O plugin `jwt` da edição OSS não busca a chave no endpoint JWKS do Keycloak, e o plugin OpenID Connect só existe na edição Enterprise.
 - **Decisão:** o Kong valida o JWT com o plugin `jwt` (RS256, `claims_to_verify=exp`). Um consumidor tem `key` igual ao `iss` do realm e a chave pública do realm, configurada no `kong.yml`. A chave do realm é fixa e a rotação é manual.
 - **Consequências:** nenhuma imagem customizada nem plugin de terceiros; rotacionar a chave exige atualizar o realm e o `kong.yml` juntos; o Backend continua validando o JWT pelos metadados do Keycloak.
+
+### ADR-011 — Multi-tenant por coleção compartilhada com `tenantId`
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** o sistema atendia uma única empresa: projetos eram isolados só por `clienteId` e o catálogo era global. Para operar como SaaS, cada empresa (tenant) precisa de catálogo, usuários e projetos próprios, sem enxergar os dos outros.
+- **Alternativas:** (a) banco por tenant: isolamento máximo, mas custo operacional alto (conexões, índices, migrações por tenant) sem necessidade neste porte; (b) realm por tenant no Keycloak: duplica clientes e a chave fixa do Kong (ADR-010) por empresa; (c) **coleção compartilhada com discriminador `tenantId`**, num único realm.
+- **Decisão:** alternativa (c).
+    - O `tenantId` é um atributo do usuário no Keycloak, emitido na claim `tenant_id` do JWT. Nunca vem de parâmetro, corpo ou cabeçalho do cliente.
+    - `ITenantAtual` expõe o tenant da requisição. Sem a claim, toda policy nega o acesso (`403`) e `TenantNaoIdentificadoException` cobre o caminho interno.
+    - O isolamento é aplicado num único ponto, `RepositorioMongo`: todas as consultas e substituições combinam o filtro do tenant, e a inserção grava o tenant na entidade. Os casos de uso não precisam lembrar dele.
+    - Índices únicos viram compostos (`tenantId` + `nome`, `tenantId` + `sinonimos`): o mesmo material pode existir em duas empresas.
+    - A gestão de usuários filtra por `tenant_id` (`q=tenant_id:<id>` na Admin API); usuário de outra empresa é tratado como inexistente (`404`). O Admin cria usuários sempre no próprio tenant.
+    - A edição do atributo `tenant_id` é permitida só ao Admin do Keycloak (perfil de usuário declarativo), nunca ao próprio usuário.
+- **Consequências:**
+    - Bancos existentes precisam da migração `infra/mongodb/migracoes/001-multitenant.js` (tenant padrão `empresa-demo`).
+    - Ferramentas MCP e agente herdam o isolamento, pois usam os mesmos repositórios.
+    - Um administrador "da plataforma" (entre tenants) não existe neste MVP e fica como evolução.
+    - O isolamento depende do filtro no repositório; o risco de esquecê-lo é reduzido por estar na classe base e coberto por testes.
 
 ---
 

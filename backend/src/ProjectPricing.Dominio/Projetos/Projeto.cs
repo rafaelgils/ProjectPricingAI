@@ -1,9 +1,10 @@
 using ProjectPricing.Dominio.Excecoes;
+using ProjectPricing.Dominio.Tenancy;
 
 namespace ProjectPricing.Dominio.Projetos;
 
 /// <summary>Pedido de cotação de um cliente (business-rules.md §6 e §7).</summary>
-public sealed class Projeto
+public sealed class Projeto : IPertenceAoTenant
 {
     public Projeto(string clienteId, string descricao, DateTimeOffset criadoEm)
     {
@@ -25,6 +26,16 @@ public sealed class Projeto
     }
 
     public string? Id { get; private set; }
+
+    /// <summary>Empresa dona do registro; definida pelo repositório na inserção (ADR-011).</summary>
+    public string TenantId { get; private set; } = string.Empty;
+
+    public void DefinirTenant(string tenantId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+
+        TenantId = tenantId;
+    }
 
     /// <summary>Usuário dono do projeto: o <c>sub</c> do token do Keycloak (ADR-004).</summary>
     public string ClienteId { get; private set; }

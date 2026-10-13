@@ -2,6 +2,7 @@ using Moq;
 using ProjectPricing.Api.Usuarios;
 using ProjectPricing.Api.Validacao;
 using ProjectPricing.Aplicacao.Usuarios;
+using ProjectPricing.Dominio.Tenancy;
 
 namespace ProjectPricing.Api.Tests.Usuarios;
 
@@ -10,7 +11,7 @@ public class GestaoUsuariosApiTests
     private const string Id = "6f1c2d9e-0000-4000-8000-000000000001";
     private static readonly DateTimeOffset Criacao = new(2026, 10, 4, 17, 30, 0, TimeSpan.Zero);
     private static readonly UsuarioGerenciado Usuario = new(
-        Id, "maria", "Maria", "Silva", "maria@empresa.com", Papeis.ClienteInterno, true, Criacao);
+        Id, "maria", "Maria", "Silva", "maria@empresa.com", Papeis.ClienteInterno, true, Criacao, "empresa-a");
     private static readonly CriarUsuarioRequisicao NovoValido = new(
         "Maria.Silva", " Maria ", "Silva", "maria@empresa.com", Papeis.ClienteInterno, "Temp@1234");
 
@@ -25,7 +26,7 @@ public class GestaoUsuariosApiTests
     public GestaoUsuariosApiTests()
     {
         _identidade.Setup(i => i.ObterAsync(Id, It.IsAny<CancellationToken>())).ReturnsAsync(Usuario);
-        _servico = new ServicoUsuarios(_identidade.Object, Mock.Of<IUsuarioAtual>(u => u.KeycloakId == "admin-logado"));
+        _servico = new ServicoUsuarios(_identidade.Object, Mock.Of<IUsuarioAtual>(u => u.KeycloakId == "admin-logado"), Mock.Of<ITenantAtual>(t => t.TenantId == "empresa-a"));
     }
 
     [Fact]
@@ -45,7 +46,7 @@ public class GestaoUsuariosApiTests
     [Fact]
     public async Task Listar_usa_a_pagina_padrao()
     {
-        _identidade.Setup(i => i.ListarAsync("mar", 1, ConsultaUsuarios.TamanhoPadrao, It.IsAny<CancellationToken>()))
+        _identidade.Setup(i => i.ListarAsync("empresa-a", "mar", 1, ConsultaUsuarios.TamanhoPadrao, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PaginaDeUsuarios([Usuario], 1));
 
         var resposta = await GestaoUsuariosEndpoints.Listar(new ConsultaUsuarios("mar", null, null), _servico, CancellationToken.None);

@@ -38,29 +38,29 @@ public class KeycloakAdminClientTests
     [Fact]
     public async Task Listar_pagina_conta_e_traz_o_papel_do_sistema()
     {
-        _keycloak.Responder("GET", "users?search=mar&first=20&max=10&briefRepresentation=true",
+        _keycloak.Responder("GET", "users?q=tenant_id%3Aempresa-a&search=mar&first=20&max=10&briefRepresentation=true",
             """[{"id":"u1","username":"maria","firstName":"Maria","lastName":"Silva","email":"m@e.com","enabled":true,"createdTimestamp":1791135000000}]""");
-        _keycloak.Responder("GET", "users/count?search=mar", "41");
+        _keycloak.Responder("GET", "users/count?q=tenant_id%3Aempresa-a&search=mar", "41");
         _keycloak.Responder("GET", "users/u1/role-mappings/realm",
             """[{"id":"r0","name":"default-roles-precificacao"},{"id":"r2","name":"cliente-interno"}]""");
 
-        var pagina = await Cliente.ListarAsync(" mar ", 3, 10, CancellationToken.None);
+        var pagina = await Cliente.ListarAsync("empresa-a", " mar ", 3, 10, CancellationToken.None);
 
         Assert.Equal(41, pagina.Total);
         var usuario = Assert.Single(pagina.Itens);
         Assert.Equal(new UsuarioGerenciado("u1", "maria", "Maria", "Silva", "m@e.com", "cliente-interno", true,
-            DateTimeOffset.FromUnixTimeMilliseconds(1791135000000)), usuario);
+            DateTimeOffset.FromUnixTimeMilliseconds(1791135000000), "empresa-a"), usuario);
         Assert.All(_keycloak.Requisicoes.Where(r => r.Caminho != "token"), r => Assert.Equal("Bearer tk-1", r.Autorizacao));
     }
 
     [Fact]
     public async Task Token_da_service_account_e_reaproveitado_ate_perto_de_expirar()
     {
-        _keycloak.Responder("GET", "users/count", "0");
+        _keycloak.Responder("GET", "users/count?q=tenant_id%3Aempresa-a", "0");
         var cliente = Cliente;
 
-        await cliente.ListarAsync(null, 1, 20, CancellationToken.None);
-        await cliente.ListarAsync(null, 1, 20, CancellationToken.None);
+        await cliente.ListarAsync("empresa-a", null, 1, 20, CancellationToken.None);
+        await cliente.ListarAsync("empresa-a", null, 1, 20, CancellationToken.None);
         Assert.Equal(1, _keycloak.Requisicoes.Count(r => r.Caminho == "token"));
         var pedido = _keycloak.Requisicoes.First(r => r.Caminho == "token").Corpo;
         Assert.Contains("grant_type=client_credentials", pedido);
@@ -69,7 +69,7 @@ public class KeycloakAdminClientTests
 
         // expires_in = 300 s e margem de 30 s: aos 271 s já renova.
         _relogio.Setup(r => r.GetUtcNow()).Returns(Agora.AddSeconds(271));
-        await cliente.ListarAsync(null, 1, 20, CancellationToken.None);
+        await cliente.ListarAsync("empresa-a", null, 1, 20, CancellationToken.None);
         Assert.Equal(2, _keycloak.Requisicoes.Count(r => r.Caminho == "token"));
     }
 
@@ -85,7 +85,7 @@ public class KeycloakAdminClientTests
         _keycloak.Responder("POST", "users", string.Empty, HttpStatusCode.Created, location: $"{Admin}users/novo-id");
 
         var id = await Cliente.CriarAsync(
-            new DadosNovoUsuario("maria", "Maria", "Silva", "m@e.com", "cliente-interno", "Temp@1234"), CancellationToken.None);
+            new DadosNovoUsuario("maria", "Maria", "Silva", "m@e.com", "cliente-interno", "Temp@1234", "empresa-a"), CancellationToken.None);
 
         Assert.Equal("novo-id", id);
         var corpo = JsonNode.Parse(_keycloak.Requisicoes.Single(r => r.Metodo == "POST" && r.Caminho == "users").Corpo)!;
@@ -95,6 +95,7 @@ public class KeycloakAdminClientTests
         Assert.Equal("Temp@1234", (string?)corpo["credentials"]![0]!["value"]);
         Assert.True((bool?)corpo["credentials"]![0]!["temporary"]);
         Assert.Null(corpo["id"]);
+        Assert.Equal("empresa-a", (string?)corpo["attributes"]!["tenant_id"]![0]);
     }
 
     [Fact]
@@ -103,7 +104,7 @@ public class KeycloakAdminClientTests
         _keycloak.Responder("POST", "users", """{"errorMessage":"User exists with same username"}""", HttpStatusCode.Conflict);
 
         await Assert.ThrowsAsync<UsuarioDuplicadoException>(() => Cliente.CriarAsync(
-            new DadosNovoUsuario("maria", "Maria", "Silva", "m@e.com", "admin", "Temp@1234"), CancellationToken.None));
+            new DadosNovoUsuario("maria", "Maria", "Silva", "m@e.com", "admin", "Temp@1234", "empresa-a"), CancellationToken.None));
     }
 
     [Fact]

@@ -7,6 +7,7 @@ using ProjectPricing.Api.Json;
 using ProjectPricing.Api.Materiais;
 using ProjectPricing.Api.Mcp;
 using ProjectPricing.Api.Projetos;
+using ProjectPricing.Api.Tenancy;
 using ProjectPricing.Api.Usuarios;
 using ProjectPricing.Api.Validacao;
 using ProjectPricing.Aplicacao.Agente;
@@ -15,6 +16,7 @@ using ProjectPricing.Aplicacao.Materiais;
 using ProjectPricing.Aplicacao.Projetos;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Precificacao;
+using ProjectPricing.Dominio.Tenancy;
 using ProjectPricing.Infraestrutura;
 using ProjectPricing.Infraestrutura.Keycloak;
 using ProjectPricing.Infraestrutura.Llm;
@@ -51,6 +53,7 @@ builder.Services.AdicionarAutenticacaoKeycloak(builder.Configuration);
 builder.Services.AdicionarPoliticasDeAutorizacao();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
+builder.Services.AddScoped<ITenantAtual, TenantAtualHttp>();
 builder.Services.AddScoped<ServicoUsuarios>();
 // Gestão de usuários (RF10): repasse à Keycloak Admin API com a service account precificacao-admin.
 builder.Services.AdicionarKeycloakAdmin(new OpcoesKeycloakAdmin

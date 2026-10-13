@@ -31,6 +31,7 @@ services:
       # Placeholders do realm-precificacao.json, resolvidos na importação
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?defina KEYCLOAK_ADMIN_CLIENT_SECRET no .env}
       KEYCLOAK_TEST_USER_PASSWORD: ${KEYCLOAK_TEST_USER_PASSWORD:?defina KEYCLOAK_TEST_USER_PASSWORD no .env}
+      TENANT_ID_DEMO: ${TENANT_ID_DEMO:-empresa-demo}
       REALM_RSA_PRIVATE_KEY: ${REALM_RSA_PRIVATE_KEY:?rode ./scripts/gerar-chave-realm.sh}
       KC_HTTP_PORT: "8080"
       KC_HOSTNAME: http://localhost:8080

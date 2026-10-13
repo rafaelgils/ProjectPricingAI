@@ -103,6 +103,7 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | ADR-012 | Idempotência com `Idempotency-Key` nos POSTs do agente | Aceita | Refatoração |
 | ADR-013 | Camada de segurança: limites de uso, defesa de prompt e segredos | Aceita | Refatoração |
 | ADR-014 | Monolito modular com fronteiras verificadas por testes | Aceita | Refatoração |
+| ADR-015 | Resiliência nas chamadas HTTP ao Keycloak | Aceita | Refatoração |
 
 ---
 
@@ -264,6 +265,14 @@ O RNF03 (disponibilidade) foi retirado do MVP.
     - Cada colaborador é testável e substituível sem tocar nos outros; o LLM continua isolado atrás de `IChatClient`.
     - O agente pode ser extraído para um serviço próprio no futuro seguindo as costuras já existentes (`IAgenteProjetos` e `IFerramentasCotacao`), sem reescrever o domínio. Essa extração só se justifica se o consumo do LLM exigir escala ou implantação independentes; fica registrada como evolução, não como débito.
     - O teste de arquitetura passa a ser a documentação executável das fronteiras.
+
+### ADR-015 — Resiliência nas chamadas HTTP ao Keycloak
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** `tech-stack.md` já listava `Microsoft.Extensions.Http.Resilience`, mas nenhuma chamada o usava. O `HttpClient` da Keycloak Admin API não tinha timeout próprio, retry nem circuit breaker: uma lentidão do Keycloak segurava requisições do Admin indefinidamente.
+- **Decisão:** o cliente da Admin API usa o pipeline padrão (`AddStandardResilienceHandler`: timeout total e por tentativa, retry com backoff e jitter, circuit breaker e limite de concorrência). O retry fica **desligado para POST, PUT, DELETE e PATCH**: repetir a criação de usuário depois de uma resposta perdida produziria um falso `USUARIO_DUPLICADO`.
+- **Fora do escopo:** a chamada ao LLM mantém o timeout e a tolerância do SDK da Anthropic (`TimeoutSegundos`); sobrepor outro retry multiplicaria o custo de chamadas pagas.
+- **Consequências:** falhas transitórias de leitura no Keycloak deixam de aparecer para o Admin; falha persistente abre o circuito e responde rápido em vez de acumular requisições.
 
 ---
 

@@ -99,6 +99,11 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 | ADR-008 | LLM: Anthropic Claude Opus 5.5 | Aceita | — |
 | ADR-009 | Um contêiner Docker por camada | Aceita | — |
 | ADR-010 | Kong valida o JWT com a chave pública fixa do realm | Aceita | Dúvida D7 do plano |
+| ADR-011 | Multi-tenant por coleção compartilhada com `tenantId` | Aceita | Refatoração |
+| ADR-012 | Idempotência com `Idempotency-Key` nos POSTs do agente | Aceita | Refatoração |
+| ADR-013 | Camada de segurança: limites de uso, defesa de prompt e segredos | Aceita | Refatoração |
+| ADR-014 | Monolito modular com fronteiras verificadas por testes | Aceita | Refatoração |
+| ADR-015 | Resiliência nas chamadas HTTP ao Keycloak | Aceita | Refatoração |
 
 ---
 
@@ -202,6 +207,72 @@ O RNF03 (disponibilidade) foi retirado do MVP.
 - **Contexto:** o Kong OSS 3.9 é a última linha com imagens OSS. O plugin `jwt` da edição OSS não busca a chave no endpoint JWKS do Keycloak, e o plugin OpenID Connect só existe na edição Enterprise.
 - **Decisão:** o Kong valida o JWT com o plugin `jwt` (RS256, `claims_to_verify=exp`). Um consumidor tem `key` igual ao `iss` do realm e a chave pública do realm, configurada no `kong.yml`. A chave do realm é fixa e a rotação é manual.
 - **Consequências:** nenhuma imagem customizada nem plugin de terceiros; rotacionar a chave exige atualizar o realm e o `kong.yml` juntos; o Backend continua validando o JWT pelos metadados do Keycloak.
+
+### ADR-011 — Multi-tenant por coleção compartilhada com `tenantId`
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** o sistema atendia uma única empresa: projetos eram isolados só por `clienteId` e o catálogo era global. Para operar como SaaS, cada empresa (tenant) precisa de catálogo, usuários e projetos próprios, sem enxergar os dos outros.
+- **Alternativas:** (a) banco por tenant: isolamento máximo, mas custo operacional alto (conexões, índices, migrações por tenant) sem necessidade neste porte; (b) realm por tenant no Keycloak: duplica clientes e a chave fixa do Kong (ADR-010) por empresa; (c) **coleção compartilhada com discriminador `tenantId`**, num único realm.
+- **Decisão:** alternativa (c).
+    - O `tenantId` é um atributo do usuário no Keycloak, emitido na claim `tenant_id` do JWT. Nunca vem de parâmetro, corpo ou cabeçalho do cliente.
+    - `ITenantAtual` expõe o tenant da requisição. Sem a claim, toda policy nega o acesso (`403`) e `TenantNaoIdentificadoException` cobre o caminho interno.
+    - O isolamento é aplicado num único ponto, `RepositorioMongo`: todas as consultas e substituições combinam o filtro do tenant, e a inserção grava o tenant na entidade. Os casos de uso não precisam lembrar dele.
+    - Índices únicos viram compostos (`tenantId` + `nome`, `tenantId` + `sinonimos`): o mesmo material pode existir em duas empresas.
+    - A gestão de usuários filtra por `tenant_id` (`q=tenant_id:<id>` na Admin API); usuário de outra empresa é tratado como inexistente (`404`). O Admin cria usuários sempre no próprio tenant.
+    - A edição do atributo `tenant_id` é permitida só ao Admin do Keycloak (perfil de usuário declarativo), nunca ao próprio usuário.
+- **Consequências:**
+    - Bancos existentes precisam da migração `infra/mongodb/migracoes/001-multitenant.js` (tenant padrão `empresa-demo`).
+    - Ferramentas MCP e agente herdam o isolamento, pois usam os mesmos repositórios.
+    - Um administrador "da plataforma" (entre tenants) não existe neste MVP e fica como evolução.
+    - O isolamento depende do filtro no repositório; o risco de esquecê-lo é reduzido por estar na classe base e coberto por testes.
+
+### ADR-012 — Idempotência com `Idempotency-Key` nos POSTs do agente
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** `POST /projetos` e `POST /projetos/{id}/mensagens` não eram idempotentes. Duplo clique, retry de rede ou reconexão do SSE criavam projetos duplicados e repetiam a chamada paga à Claude API.
+- **Decisão:** o cliente envia o cabeçalho opcional `Idempotency-Key` (1 a 128 caracteres ASCII visíveis; o frontend usa um UUID por ação do usuário). Um filtro de endpoint (`FiltroIdempotencia`) decide, antes do handler:
+    - chave nova → processa e **guarda a resposta SSE** exatamente como enviada (status, `Location` e corpo);
+    - chave repetida e concluída → reenvia a resposta guardada com o cabeçalho `Idempotent-Replayed: true`, sem criar projeto nem chamar o LLM;
+    - chave repetida ainda em processamento → `409 REQUISICAO_EM_ANDAMENTO`;
+    - chave repetida com outro conteúdo (método, caminho ou corpo) → `422 IDEMPOTENCIA_CONFLITO`.
+- **Escopo e armazenamento:** a chave vale por `tenantId` + usuário. Fica na coleção `chavesIdempotencia`; um índice único decide de forma atômica qual chamada simultânea processa, e um índice TTL descarta as chaves após 24 h.
+- **O que não é guardado:** falhas transitórias (`FALHA_PROCESSAMENTO`, `ERRO_INTERNO`), desistência do cliente e erros HTTP comuns antes do stream. Nesses casos a chave é liberada e a nova tentativa processa de novo. Erros de negócio determinísticos (itens não encontrados, esclarecimento) são guardados.
+- **Consequências:** o cabeçalho é opcional, então clientes antigos continuam funcionando sem proteção. Se o servidor cair depois de criar o projeto e antes de concluir, a nova tentativa cria outro projeto em rascunho; aceitável no MVP.
+
+### ADR-013 — Camada de segurança: limites de uso, defesa de prompt e segredos
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** a segurança se resumia à validação do JWT (Kong e backend). Não havia limite de uso, e cada cotação é uma chamada paga à Claude API; o texto do cliente e os nomes do catálogo entravam crus nos prompts; um `.env` esquecido com valores de exemplo subia sem aviso.
+- **Decisão:**
+    - **Limites de uso em duas camadas.** O Kong aplica `rate-limiting` por IP (600/min). O backend aplica `AddRateLimiter` encadeado: 120 requisições/min por usuário em qualquer rota; 10 cotações/mensagens por minuto por usuário e 300 por hora por tenant nos POSTs que acionam o agente. Excesso responde `429` em Problem Details, com `code = LIMITE_DE_USO_EXCEDIDO` e `Retry-After`. Os valores vêm da seção `LimitesDeUso`.
+    - **Defesa de prompt em profundidade.** Já valiam: o LLM só recebe `buscarMateriais`; cálculo e gravação são do código (ADR-001, ADR-006); `materialId` sugerido é validado contra a lista enviada. Passam a valer também: (1) todo texto interpolado em prompt (termos, nomes e categorias do catálogo, itens do projeto) passa por `SegurancaDoPrompt.Linha`, que remove quebras de linha e caracteres de controle e limita o tamanho, impedindo seções ou itens falsos; (2) a saída do LLM é limitada (no máximo 50 itens, termos de até 200 caracteres, medidas até 1.000.000.000), e o que passar disso é falha de processamento; (3) os prompts versionados ganham a regra de tratar o texto do cliente e do catálogo como dado, nunca como instrução.
+    - **Segredos.** `ValidadorDeSegredos` derruba a subida se `ConnectionStrings:MongoDB`, `Keycloak:AdminClientSecret` ou `Anthropic:ApiKey` contiverem o prefixo de exemplo `troque-`. A mensagem cita só o nome da chave, nunca o valor.
+    - **CORS.** O Kong passa a aceitar o cabeçalho `Idempotency-Key` e a expor `Idempotent-Replayed` e `Retry-After`.
+- **Consequências:**
+    - O abuso por usuário e por empresa fica limitado e o custo do LLM, previsível; os limites são por processo (em memória), então com várias réplicas do backend o teto efetivo multiplica. Um contador distribuído fica como evolução.
+    - Quem copiar o `.env.example` sem editar os segredos não consegue subir o backend, o que é intencional.
+    - A validação de prompt reduz, mas não elimina, o risco de injeção; a barreira final continua sendo o fato de o LLM não poder calcular nem gravar.
+
+### ADR-014 — Monolito modular com fronteiras verificadas por testes
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** o backend é um único processo. Isso é adequado ao porte do MVP (um contêiner, uma implantação, transações simples), mas a separação em camadas era só convenção: nada impedia, por exemplo, o catálogo de depender do agente, e o `AgenteProjetos` (374 linhas) concentrava interpretação, correspondência com o catálogo e orquestração.
+- **Alternativas:** (a) extrair o agente num segundo serviço: isola o custo e a escala do LLM, mas traz rede, versionamento de contrato, autenticação entre serviços e tracing distribuído sem haver, hoje, necessidade de escalar de forma independente; (b) manter o monolito sem regras; (c) **monolito modular**, com módulos de fronteira explícita e regra verificada por teste.
+- **Decisão:** alternativa (c). Módulos da camada de aplicação: **Catálogo** (`Aplicacao.Materiais`), **Cotação** (`Aplicacao.Projetos`, `Aplicacao.Agente`, `Aplicacao.Cotacao`) e **Identidade** (`Aplicacao.Usuarios`). `IUsuarioAtual` e `ITenantAtual` são o núcleo compartilhado.
+    - A regra de dependência entre camadas e as fronteiras entre módulos são verificadas por `FronteirasDeArquiteturaTests`, por reflexão, sem biblioteca nova: o domínio não referencia nenhuma outra camada nem MongoDB, Anthropic ou ASP.NET; a aplicação não referencia infraestrutura nem API; Catálogo e Identidade não conhecem Cotação; Cotação não conhece o serviço do Catálogo.
+    - O `AgenteProjetos` virou orquestrador (146 linhas) sobre dois colaboradores com contrato próprio: `IInterpretadorDeDescricao` (prompt, tool `buscarMateriais`, validação da saída) e `IResolvedorDeMateriais` (RN09, passos 1 e 2).
+- **Consequências:**
+    - Cada colaborador é testável e substituível sem tocar nos outros; o LLM continua isolado atrás de `IChatClient`.
+    - O agente pode ser extraído para um serviço próprio no futuro seguindo as costuras já existentes (`IAgenteProjetos` e `IFerramentasCotacao`), sem reescrever o domínio. Essa extração só se justifica se o consumo do LLM exigir escala ou implantação independentes; fica registrada como evolução, não como débito.
+    - O teste de arquitetura passa a ser a documentação executável das fronteiras.
+
+### ADR-015 — Resiliência nas chamadas HTTP ao Keycloak
+
+- **Status:** Aceita · refatoração (branch `refactoring`)
+- **Contexto:** `tech-stack.md` já listava `Microsoft.Extensions.Http.Resilience`, mas nenhuma chamada o usava. O `HttpClient` da Keycloak Admin API não tinha timeout próprio, retry nem circuit breaker: uma lentidão do Keycloak segurava requisições do Admin indefinidamente.
+- **Decisão:** o cliente da Admin API usa o pipeline padrão (`AddStandardResilienceHandler`: timeout total e por tentativa, retry com backoff e jitter, circuit breaker e limite de concorrência). O retry fica **desligado para POST, PUT, DELETE e PATCH**: repetir a criação de usuário depois de uma resposta perdida produziria um falso `USUARIO_DUPLICADO`.
+- **Fora do escopo:** a chamada ao LLM mantém o timeout e a tolerância do SDK da Anthropic (`TimeoutSegundos`); sobrepor outro retry multiplicaria o custo de chamadas pagas.
+- **Consequências:** falhas transitórias de leitura no Keycloak deixam de aparecer para o Admin; falha persistente abre o circuito e responde rápido em vez de acumular requisições.
 
 ---
 

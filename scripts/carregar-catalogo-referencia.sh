@@ -4,21 +4,25 @@
 # Só insere os materiais que ainda não existem (mesmo nome, sem diferenciar maiúsculas e acentos);
 # os já cadastrados não são alterados. Um material cujo sinônimo já pertence a outro (RN10) é pulado e listado.
 #
-# Uso: ./scripts/carregar-catalogo-referencia.sh
+# O catálogo pertence a uma empresa (ADR-011): informe TENANT_ID (padrão: empresa-demo, o tenant dos usuários de teste).
+#
+# Uso: [TENANT_ID=empresa-demo] ./scripts/carregar-catalogo-referencia.sh
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$RAIZ"
 set -a; . ./.env; set +a
+TENANT_ID="${TENANT_ID:-empresa-demo}"
 
-SCRIPT="const dados = $(cat infra/mongodb/referencia/catalogo-referencia.json);
+SCRIPT="const tenantId = '${TENANT_ID}';
+const dados = $(cat infra/mongodb/referencia/catalogo-referencia.json);
 $(cat <<'JS'
 const collationPt = { locale: 'pt', strength: 1 };
 let inseridos = 0;
 let existentes = 0;
 const conflitos = [];
 for (const m of dados.materiais) {
-  if (db.materiais.find({ nome: m.nome }).collation(collationPt).limit(1).hasNext()) {
+  if (db.materiais.find({ tenantId, nome: m.nome }).collation(collationPt).limit(1).hasNext()) {
     existentes++;
     continue;
   }
@@ -26,7 +30,7 @@ for (const m of dados.materiais) {
   // compara nome com nome e sinônimo com sinônimo; a comparação cruzada é feita aqui, como na API.
   const termos = [m.nome, ...m.sinonimos];
   const repetido = db.materiais
-    .find({ $or: [{ nome: { $in: termos } }, { sinonimos: { $in: termos } }] })
+    .find({ tenantId, $or: [{ nome: { $in: termos } }, { sinonimos: { $in: termos } }] })
     .collation(collationPt).limit(1).hasNext();
   if (repetido) {
     conflitos.push(m.nome);
@@ -34,6 +38,7 @@ for (const m of dados.materiais) {
   }
   try {
     db.materiais.insertOne({
+      tenantId,
       nome: m.nome,
       sinonimos: m.sinonimos,
       tipo: m.tipo,

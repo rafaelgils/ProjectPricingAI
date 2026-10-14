@@ -153,7 +153,7 @@ public class SuiteRegressaoTests
                 new ServicoPrecificacao(ConversorUnidades.CriarPadrao()),
                 Mock.Of<IUsuarioAtual>(u => u.KeycloakId == ClienteId),
                 relogio.Object);
-            _agente = new AgenteProjetos(chat.Object, ferramentas, Mock.Of<IConversaRepository>(), relogio.Object, NullLogger<AgenteProjetos>.Instance);
+            _agente = new AgenteProjetos(new InterpretadorDeDescricao(chat.Object, ferramentas), new ResolvedorDeMateriais(chat.Object, ferramentas), ferramentas, Mock.Of<IConversaRepository>(), relogio.Object, NullLogger<AgenteProjetos>.Instance);
         }
 
         public Projeto Projeto { get; }

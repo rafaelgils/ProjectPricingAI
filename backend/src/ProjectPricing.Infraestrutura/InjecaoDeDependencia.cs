@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using ProjectPricing.Aplicacao.Idempotencia;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Conversas;
 using ProjectPricing.Dominio.Materiais;
@@ -32,9 +35,12 @@ public static class InjecaoDeDependencia
         services.AddSingleton(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<Projeto>(NomesColecoes.Projetos));
         services.AddSingleton(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<Conversa>(NomesColecoes.Conversas));
 
+        services.AddSingleton(sp => sp.GetRequiredService<IMongoDatabase>().GetCollection<BsonDocument>(NomesColecoes.ChavesIdempotencia));
+
         services.AddScoped<IMaterialRepository, MaterialRepository>();
         services.AddScoped<IProjetoRepository, ProjetoRepository>();
         services.AddScoped<IConversaRepository, ConversaRepository>();
+        services.AddScoped<IArmazemIdempotencia, ArmazemIdempotenciaMongo>();
 
         return services;
     }
@@ -45,7 +51,10 @@ public static class InjecaoDeDependencia
         ArgumentNullException.ThrowIfNull(opcoes);
 
         services.AddSingleton(opcoes);
-        services.AddHttpClient(nameof(KeycloakAdminClient));
+        // Resiliência (ADR-015): timeout, retry com jitter, circuit breaker e limite de concorrência. O retry vale só
+        // para métodos seguros (GET): repetir o POST de criação de usuário viraria um falso "usuário duplicado".
+        services.AddHttpClient(nameof(KeycloakAdminClient))
+            .AddStandardResilienceHandler(opcoes => opcoes.Retry.DisableFor(HttpMethod.Post, HttpMethod.Put, HttpMethod.Delete, HttpMethod.Patch));
         // O token da service account fica em cache na instância; ela precisa durar o processo inteiro.
         services.AddSingleton<IGestaoIdentidade>(sp => new KeycloakAdminClient(
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(KeycloakAdminClient)),

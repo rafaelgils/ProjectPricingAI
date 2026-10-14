@@ -35,7 +35,7 @@ public sealed class OpcoesKeycloakAdmin
 /// Repasse à Keycloak Admin API (ADR-004, RF10) com a service account do cliente precificacao-admin,
 /// que só tem os papéis view-users e manage-users.
 /// </summary>
-public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opcoes, TimeProvider relogio) : IGestaoIdentidade
+public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opcoes, TimeProvider relogio) : IGestaoIdentidade, IDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -49,9 +49,13 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
     private string? _token;
     private DateTimeOffset _expiraEm;
 
-    public async Task<PaginaDeUsuarios> ListarAsync(string? busca, int pagina, int tamanho, CancellationToken cancellationToken)
+    /// <summary>Atributo do usuário no Keycloak que guarda a empresa (vira a claim <c>tenant_id</c> do token).</summary>
+    public const string AtributoTenant = "tenant_id";
+
+    public async Task<PaginaDeUsuarios> ListarAsync(string tenantId, string? busca, int pagina, int tamanho, CancellationToken cancellationToken)
     {
-        var filtro = string.IsNullOrWhiteSpace(busca) ? string.Empty : $"search={Uri.EscapeDataString(busca.Trim())}&";
+        var filtro = $"q={Uri.EscapeDataString($"{AtributoTenant}:{tenantId}")}&"
+            + (string.IsNullOrWhiteSpace(busca) ? string.Empty : $"search={Uri.EscapeDataString(busca.Trim())}&");
         var usuarios = await LerAsync<List<UsuarioKeycloak>>(
             $"users?{filtro}first={(pagina - 1) * tamanho}&max={tamanho}&briefRepresentation=true", cancellationToken) ?? [];
         var total = await LerAsync<long>($"users/count?{filtro}".TrimEnd('&', '?'), cancellationToken);
@@ -59,7 +63,7 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
         var itens = new List<UsuarioGerenciado>(usuarios.Count);
         foreach (var usuario in usuarios)
         {
-            itens.Add(ParaUsuario(usuario, await PapelDoSistemaAsync(usuario.Id!, cancellationToken)));
+            itens.Add(ParaUsuario(usuario, await PapelDoSistemaAsync(usuario.Id!, cancellationToken), tenantId));
         }
 
         return new PaginaDeUsuarios(itens, total);
@@ -83,6 +87,7 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
             Enabled = true,
             // Senha temporária: o Keycloak exige a troca no primeiro login.
             Credentials = [new CredencialKeycloak { Type = "password", Value = dados.SenhaTemporaria, Temporary = true }],
+            Attributes = new Dictionary<string, string[]> { [AtributoTenant] = [dados.TenantId ?? throw new ArgumentException("Usuário sem tenant.", nameof(dados))] },
         };
 
         using var resposta = await EnviarAsync(HttpMethod.Post, "users", usuario, cancellationToken);
@@ -130,7 +135,7 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
         return ServicoUsuarios.PapeisDoSistema.FirstOrDefault(sistema => papeis.Any(p => p.Name == sistema));
     }
 
-    private static UsuarioGerenciado ParaUsuario(UsuarioKeycloak usuario, string? papel) => new(
+    private static UsuarioGerenciado ParaUsuario(UsuarioKeycloak usuario, string? papel, string? tenantId = null) => new(
         usuario.Id!,
         usuario.Username ?? string.Empty,
         usuario.FirstName ?? string.Empty,
@@ -138,7 +143,8 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
         usuario.Email,
         papel,
         usuario.Enabled ?? false,
-        DateTimeOffset.FromUnixTimeMilliseconds(usuario.CreatedTimestamp ?? 0));
+        DateTimeOffset.FromUnixTimeMilliseconds(usuario.CreatedTimestamp ?? 0),
+        tenantId ?? (usuario.Attributes?.GetValueOrDefault(AtributoTenant) is { Length: > 0 } valores ? valores[0] : null));
 
     private async Task<T?> LerAsync<T>(string caminho, CancellationToken cancellationToken, bool nuloSeNaoExistir = false)
     {
@@ -185,12 +191,13 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
                 return _token;
             }
 
-            using var resposta = await http.PostAsync(opcoes.UrlToken, new FormUrlEncodedContent(new Dictionary<string, string>
+            using var formulario = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "client_credentials",
                 ["client_id"] = opcoes.ClientId,
                 ["client_secret"] = opcoes.ClientSecret ?? string.Empty,
-            }), cancellationToken);
+            });
+            using var resposta = await http.PostAsync(opcoes.UrlToken, formulario, cancellationToken);
             resposta.EnsureSuccessStatusCode();
 
             var token = await resposta.Content.ReadFromJsonAsync<TokenKeycloak>(Json, cancellationToken)
@@ -205,6 +212,8 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
         }
     }
 
+    public void Dispose() => _travaToken.Dispose();
+
     private sealed class UsuarioKeycloak
     {
         public string? Id { get; init; }
@@ -216,6 +225,7 @@ public sealed class KeycloakAdminClient(HttpClient http, OpcoesKeycloakAdmin opc
         public bool? Enabled { get; init; }
         public long? CreatedTimestamp { get; init; }
         public IReadOnlyList<CredencialKeycloak>? Credentials { get; init; }
+        public Dictionary<string, string[]>? Attributes { get; init; }
     }
 
     private sealed class CredencialKeycloak

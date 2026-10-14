@@ -55,7 +55,7 @@ public class MaterialRepositoryTests
             .Callback<FilterDefinition<Material>, FindOptions<Material, Material>, CancellationToken>((_, opcoes, _) => opcoesUsadas = opcoes)
             .ReturnsAsync(Cursor(material));
 
-        var pagina = await new MaterialRepository(colecao.Object)
+        var pagina = await new MaterialRepository(colecao.Object, new TenantFixo())
             .ListarAsync(new FiltroMateriais(null, null, null, 3, 20), CancellationToken.None);
 
         Assert.Equal(41, pagina.Total);
@@ -82,7 +82,7 @@ public class MaterialRepositoryTests
             })
             .ReturnsAsync(Cursor<Material>());
 
-        var conflito = await new MaterialRepository(colecao.Object)
+        var conflito = await new MaterialRepository(colecao.Object, new TenantFixo())
             .BuscarConflitoDeNomeAsync(["Chapa", "placa"], id, CancellationToken.None);
 
         Assert.Null(conflito);
@@ -104,10 +104,10 @@ public class MaterialRepositoryTests
             .Callback<FilterDefinition<Material>, FindOptions<Material, Material>, CancellationToken>((filtro, _, _) => filtroUsado = filtro)
             .ReturnsAsync(Cursor(NovoMaterial("Chapa")));
 
-        var ativos = await new MaterialRepository(colecao.Object).ListarAtivosAsync(CancellationToken.None);
+        var ativos = await new MaterialRepository(colecao.Object, new TenantFixo()).ListarAtivosAsync(CancellationToken.None);
 
         Assert.Single(ativos);
-        Assert.Equal(new BsonDocument("status", "ativo"), Renderizar(filtroUsado!));
+        Assert.Equal(new BsonDocument { ["status"] = "ativo", ["tenantId"] = TenantFixo.Padrao }, Renderizar(filtroUsado!));
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class MaterialRepositoryTests
     {
         var colecao = new Mock<IMongoCollection<Material>>(MockBehavior.Strict);
 
-        var nenhum = await new MaterialRepository(colecao.Object).ObterPorIdsAsync(["abc", "m-chapa"], CancellationToken.None);
+        var nenhum = await new MaterialRepository(colecao.Object, new TenantFixo()).ObterPorIdsAsync(["abc", "m-chapa"], CancellationToken.None);
 
         Assert.Empty(nenhum);
     }
@@ -131,7 +131,7 @@ public class MaterialRepositoryTests
             .Callback<FilterDefinition<Material>, FindOptions<Material, Material>, CancellationToken>((filtro, _, _) => filtroUsado = filtro)
             .ReturnsAsync(Cursor(NovoMaterial("Chapa")));
 
-        await new MaterialRepository(colecao.Object).ObterPorIdsAsync([id, id, "invalido"], CancellationToken.None);
+        await new MaterialRepository(colecao.Object, new TenantFixo()).ObterPorIdsAsync([id, id, "invalido"], CancellationToken.None);
 
         var ids = Renderizar(filtroUsado!)["_id"]["$in"].AsBsonArray;
         Assert.Equal([ObjectId.Parse(id)], ids.Select(v => v.AsObjectId));

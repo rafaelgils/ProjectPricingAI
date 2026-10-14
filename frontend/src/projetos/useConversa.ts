@@ -37,6 +37,9 @@ export function useConversa({ projetoId, aoTerminar, problemaInicial = null }: O
   const [enviando, setEnviando] = useState(false);
   const [problema, setProblema] = useState<Problema | null>(problemaInicial);
   const cancelamento = useRef<AbortController | null>(null);
+  // Chave da tentativa que não terminou (queda de rede): reenviar o mesmo texto reaproveita a chave e,
+  // se o servidor já tinha processado, recebe a mesma resposta em vez de criar outro projeto (ADR-012).
+  const tentativaPendente = useRef<{ conteudo: string; chave: string } | null>(null);
 
   // Ao sair da página, encerra o stream em andamento.
   useEffect(() => () => cancelamento.current?.abort(), []);
@@ -50,6 +53,11 @@ export function useConversa({ projetoId, aoTerminar, problemaInicial = null }: O
 
       const controle = new AbortController();
       cancelamento.current = controle;
+      const chave =
+        tentativaPendente.current?.conteudo === conteudo
+          ? tentativaPendente.current.chave
+          : crypto.randomUUID();
+      tentativaPendente.current = { conteudo, chave };
       setEnviando(true);
       setProblema(null);
       setAoVivo([{ papel: 'usuario', conteudo }]);
@@ -60,7 +68,7 @@ export function useConversa({ projetoId, aoTerminar, problemaInicial = null }: O
       let problemaDaRodada: Problema | null = null;
 
       try {
-        for await (const evento of api.conversar(caminho, corpo, controle.signal)) {
+        for await (const evento of api.conversar(caminho, corpo, controle.signal, chave)) {
           if (evento.tipo === 'delta') {
             setAoVivo((atuais) => [
               ...atuais,
@@ -89,6 +97,7 @@ export function useConversa({ projetoId, aoTerminar, problemaInicial = null }: O
       }
 
       if (fim) {
+        tentativaPendente.current = null;
         await cliente.invalidateQueries({ queryKey: chavesProjetos.todos });
         setAoVivo([]);
         aoTerminar?.({ ...fim, problema: problemaDaRodada });

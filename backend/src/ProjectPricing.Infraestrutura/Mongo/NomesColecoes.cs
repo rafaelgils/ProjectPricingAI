@@ -6,4 +6,5 @@ public static class NomesColecoes
     public const string Materiais = "materiais";
     public const string Projetos = "projetos";
     public const string Conversas = "conversas";
+    public const string ChavesIdempotencia = "chavesIdempotencia";
 }

@@ -1,9 +1,10 @@
 using ProjectPricing.Dominio.Excecoes;
+using ProjectPricing.Dominio.Tenancy;
 
 namespace ProjectPricing.Dominio.Projetos;
 
 /// <summary>Pedido de cotação de um cliente (business-rules.md §6 e §7).</summary>
-public sealed class Projeto
+public sealed class Projeto : EntidadeDoTenant
 {
     public Projeto(string clienteId, string descricao, DateTimeOffset criadoEm)
     {

@@ -1,0 +1,50 @@
+ATIVIDADE PRÁTICA - REFATORAÇÃO DE ARQUITETURA
+Projeto: ProjectPricingAI - Sistema de Cotação de Projetos
+Aluno: Thiago Moura
+
+-----------------------------------------------------------------
+1. CÓDIGO REFATORADO (branch "refactoring")
+-----------------------------------------------------------------
+Repositório:
+https://github.com/rafaelgils/ProjectPricingAI
+
+Branch refactoring:
+https://github.com/rafaelgils/ProjectPricingAI/tree/refactoring
+
+Pull Request com o resumo das mudanças:
+https://github.com/rafaelgils/ProjectPricingAI/pull/11
+
+Comparativo completo das alterações (main x refactoring):
+https://github.com/rafaelgils/ProjectPricingAI/compare/main...refactoring
+
+-----------------------------------------------------------------
+2. PROMPTS UTILIZADOS
+-----------------------------------------------------------------
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/docs/refactoring/prompts.md
+
+-----------------------------------------------------------------
+3. RELATÓRIO DE MODERNIZAÇÃO
+-----------------------------------------------------------------
+Markdown:
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/docs/refactoring/relatorio-modernizacao.md
+
+PDF (relatório + prompts + plano, 15 páginas):
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/docs/refactoring/Relatorio-de-Modernizacao.pdf
+
+-----------------------------------------------------------------
+DOCUMENTAÇÃO COMPLEMENTAR
+-----------------------------------------------------------------
+Plano de refatoração:
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/docs/refactoring/plano-de-refatoracao.md
+
+Baseline de métricas (antes da refatoração):
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/docs/refactoring/baseline.md
+
+Guia de migração:
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/docs/refactoring/migracao.md
+
+Decisões de arquitetura (ADR-011 a ADR-015):
+https://github.com/rafaelgils/ProjectPricingAI/blob/refactoring/.ai/architecture.md
+
+Pasta com todos os documentos da refatoração:
+https://github.com/rafaelgils/ProjectPricingAI/tree/refactoring/docs/refactoring

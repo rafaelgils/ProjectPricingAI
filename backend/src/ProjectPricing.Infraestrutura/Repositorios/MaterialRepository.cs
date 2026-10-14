@@ -2,12 +2,13 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using ProjectPricing.Dominio.Excecoes;
 using ProjectPricing.Dominio.Materiais;
+using ProjectPricing.Dominio.Tenancy;
 using ProjectPricing.Infraestrutura.Mongo;
 
 namespace ProjectPricing.Infraestrutura.Repositorios;
 
-public sealed class MaterialRepository(IMongoCollection<Material> colecao)
-    : RepositorioMongo<Material>(colecao, m => m.Id), IMaterialRepository
+public sealed class MaterialRepository(IMongoCollection<Material> colecao, ITenantAtual tenant)
+    : RepositorioMongo<Material>(colecao, m => m.Id, tenant), IMaterialRepository
 {
     private const string CampoSinonimos = "sinonimos";
 
@@ -18,7 +19,7 @@ public sealed class MaterialRepository(IMongoCollection<Material> colecao)
 
     public async Task<PaginaDeMateriais> ListarAsync(FiltroMateriais filtro, CancellationToken cancellationToken)
     {
-        var condicao = MontarFiltro(filtro);
+        var condicao = MontarFiltro(filtro) & DoTenant;
 
         var total = await Colecao.CountDocumentsAsync(condicao, cancellationToken: cancellationToken);
         var opcoes = new FindOptions<Material>
@@ -37,7 +38,7 @@ public sealed class MaterialRepository(IMongoCollection<Material> colecao)
     public async Task<IReadOnlyList<Material>> ListarAtivosAsync(CancellationToken cancellationToken)
     {
         using var cursor = await Colecao.FindAsync(
-            Filtro.Eq(m => m.Status, StatusMaterial.Ativo), cancellationToken: cancellationToken);
+            Filtro.Eq(m => m.Status, StatusMaterial.Ativo) & DoTenant, cancellationToken: cancellationToken);
         return await cursor.ToListAsync(cancellationToken);
     }
 
@@ -51,7 +52,7 @@ public sealed class MaterialRepository(IMongoCollection<Material> colecao)
             return [];
         }
 
-        using var cursor = await Colecao.FindAsync(Filtro.In(m => m.Id, validos), cancellationToken: cancellationToken);
+        using var cursor = await Colecao.FindAsync(Filtro.In(m => m.Id, validos) & DoTenant, cancellationToken: cancellationToken);
         return await cursor.ToListAsync(cancellationToken);
     }
 
@@ -60,7 +61,7 @@ public sealed class MaterialRepository(IMongoCollection<Material> colecao)
         string? ignorarId,
         CancellationToken cancellationToken)
     {
-        var condicao = Filtro.Or(
+        var condicao = DoTenant & Filtro.Or(
             Filtro.In(m => m.Nome, termos),
             Filtro.In(new StringFieldDefinition<Material, string>(CampoSinonimos), termos));
         if (ignorarId is not null)

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using ProjectPricing.Api.Autorizacao;
+using ProjectPricing.Api.Tenancy;
 
 namespace ProjectPricing.Api.Tests.Autorizacao;
 
@@ -57,9 +58,35 @@ public class PoliticasTests
         Assert.True((await servico.AuthorizeAsync(UsuarioCom(), fallback)).Succeeded);
     }
 
+    [Theory]
+    [InlineData(Politicas.PodeGerenciarCatalogo)]
+    [InlineData(Politicas.PodeConsultarCatalogo)]
+    [InlineData(Politicas.PodeCotar)]
+    [InlineData(Politicas.PodeGerenciarUsuarios)]
+    public async Task Usuario_sem_tenant_nao_acessa_nenhuma_policy_mesmo_sendo_admin(string politica)
+    {
+        var resultado = await Autorizar(UsuarioSemTenant("admin"), politica);
+
+        Assert.False(resultado.Succeeded);
+    }
+
+    [Fact]
+    public async Task Endpoint_sem_policy_tambem_exige_tenant()
+    {
+        var fallback = await _servicos.GetRequiredService<IAuthorizationPolicyProvider>().GetFallbackPolicyAsync();
+        var servico = _servicos.GetRequiredService<IAuthorizationService>();
+
+        Assert.False((await servico.AuthorizeAsync(UsuarioSemTenant("admin"), fallback!)).Succeeded);
+    }
+
     private Task<AuthorizationResult> Autorizar(ClaimsPrincipal usuario, string politica) =>
         _servicos.GetRequiredService<IAuthorizationService>().AuthorizeAsync(usuario, politica);
 
     private static ClaimsPrincipal UsuarioCom(params string[] papeis) =>
+        new(new ClaimsIdentity(
+            papeis.Select(p => new Claim(ClaimTypes.Role, p)).Append(new Claim(TenantAtualHttp.Claim, "empresa-a")),
+            "Bearer"));
+
+    private static ClaimsPrincipal UsuarioSemTenant(params string[] papeis) =>
         new(new ClaimsIdentity(papeis.Select(p => new Claim(ClaimTypes.Role, p)), "Bearer"));
 }

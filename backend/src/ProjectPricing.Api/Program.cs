@@ -4,9 +4,12 @@ using ProjectPricing.Api.Autenticacao;
 using ProjectPricing.Api.Autorizacao;
 using ProjectPricing.Api.Erros;
 using ProjectPricing.Api.Json;
+using ProjectPricing.Api.Limites;
 using ProjectPricing.Api.Materiais;
 using ProjectPricing.Api.Mcp;
 using ProjectPricing.Api.Projetos;
+using ProjectPricing.Api.Seguranca;
+using ProjectPricing.Api.Tenancy;
 using ProjectPricing.Api.Usuarios;
 using ProjectPricing.Api.Validacao;
 using ProjectPricing.Aplicacao.Agente;
@@ -15,12 +18,16 @@ using ProjectPricing.Aplicacao.Materiais;
 using ProjectPricing.Aplicacao.Projetos;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Precificacao;
+using ProjectPricing.Dominio.Tenancy;
 using ProjectPricing.Infraestrutura;
 using ProjectPricing.Infraestrutura.Keycloak;
 using ProjectPricing.Infraestrutura.Llm;
 using ProjectPricing.Infraestrutura.Mongo;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Falha na subida se algum segredo mantiver o valor de exemplo do .env.example (ADR-013).
+ValidadorDeSegredos.Validar(builder.Configuration);
 
 builder.Services.AddOpenApi();
 var fuso = TimeZoneInfo.FindSystemTimeZoneById(
@@ -35,6 +42,8 @@ builder.Services.ConfigureHttpJsonOptions(json =>
 builder.Services.AddProblemDetails(opcoes =>
     opcoes.CustomizeProblemDetails = contexto => MapeadorDeErros.CompletarCodigo(contexto.ProblemDetails));
 builder.Services.AddExceptionHandler<TratadorDeExcecoes>();
+builder.Services.AdicionarLimitesDeUso(
+    builder.Configuration.GetSection(OpcoesLimitesDeUso.Secao).Get<OpcoesLimitesDeUso>() ?? new OpcoesLimitesDeUso());
 
 ConfiguracaoValidacao.Aplicar();
 builder.Services.AddSingleton<IValidator<CriarMaterialRequisicao>, CriarMaterialValidador>();
@@ -51,6 +60,7 @@ builder.Services.AdicionarAutenticacaoKeycloak(builder.Configuration);
 builder.Services.AdicionarPoliticasDeAutorizacao();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
+builder.Services.AddScoped<ITenantAtual, TenantAtualHttp>();
 builder.Services.AddScoped<ServicoUsuarios>();
 // Gestão de usuários (RF10): repasse à Keycloak Admin API com a service account precificacao-admin.
 builder.Services.AdicionarKeycloakAdmin(new OpcoesKeycloakAdmin
@@ -69,6 +79,8 @@ builder.Services.AddScoped<ServicoCatalogo>();
 builder.Services.AddSingleton<IConversorUnidades>(ConversorUnidades.CriarPadrao());
 builder.Services.AddSingleton<IServicoPrecificacao, ServicoPrecificacao>();
 builder.Services.AddScoped<IFerramentasCotacao, FerramentasCotacao>();
+builder.Services.AddScoped<IInterpretadorDeDescricao, InterpretadorDeDescricao>();
+builder.Services.AddScoped<IResolvedorDeMateriais, ResolvedorDeMateriais>();
 builder.Services.AddScoped<IAgenteProjetos, AgenteProjetos>();
 builder.Services.AddScoped<ServicoProjetos>();
 builder.Services.AddScoped<CondutorConversa>();
@@ -89,6 +101,8 @@ app.UseExceptionHandler();
 // 401, 403 e 404 sem corpo também saem em Problem Details.
 app.UseStatusCodePages();
 app.UseAuthentication();
+// Depois da autenticação: os limites usam o usuário e o tenant do token.
+app.UseRateLimiter();
 app.UseAuthorization();
 
 // Publicada em /openapi/v1.json em todos os ambientes (standards.md §5).

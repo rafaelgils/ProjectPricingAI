@@ -27,6 +27,30 @@ public class MapeamentoMongoTests
     }
 
     [Fact]
+    public void Tenant_e_gravado_como_tenantId_em_todas_as_entidades_e_volta_na_leitura()
+    {
+        var material = new Material("Chapa", [], TipoMaterial.Material, "Sinalização", UnidadeMedida.MetroQuadrado, 120m, "Aço SA", Agora);
+        var projeto = new Projeto("cliente-1", "Placa", Agora);
+        var conversa = new Conversa("6703f1c2a900000000000001");
+        material.DefinirTenant("empresa-a");
+        projeto.DefinirTenant("empresa-a");
+        conversa.DefinirTenant("empresa-b");
+
+        Assert.Equal("empresa-a", material.ToBsonDocument()["tenantId"].AsString);
+        Assert.Equal("empresa-a", projeto.ToBsonDocument()["tenantId"].AsString);
+        Assert.Equal("empresa-b", conversa.ToBsonDocument()["tenantId"].AsString);
+        Assert.Equal("empresa-a", BsonSerializer.Deserialize<Projeto>(projeto.ToBsonDocument()).TenantId);
+    }
+
+    [Fact]
+    public void Tenant_nao_pode_ser_vazio()
+    {
+        var projeto = new Projeto("cliente-1", "Placa", Agora);
+
+        Assert.Throws<ArgumentException>(() => projeto.DefinirTenant(" "));
+    }
+
+    [Fact]
     public void Material_vira_documento_com_codigos_da_documentacao_e_Decimal128()
     {
         var material = new Material(

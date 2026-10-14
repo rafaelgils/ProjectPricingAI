@@ -62,6 +62,35 @@ describe('ClienteApi', () => {
     expect(chamadas[0].corpo).toEqual({ nome: 'Chapa' });
   });
 
+  it('envia a Idempotency-Key quando a conversa informa uma chave', async () => {
+    const sse = new Response('event: fim\ndata: {"projetoId":"p1","status":"cotado"}\n\n', {
+      status: 201,
+      headers: { 'Content-Type': 'text/event-stream' },
+    });
+    const chamadas = simularFetch({ 'POST /api/v1/projetos': () => sse });
+
+    const eventos = [];
+    for await (const evento of api.conversar(
+      '/api/v1/projetos',
+      { descricao: 'Placa' },
+      undefined,
+      'chave-1',
+    )) {
+      eventos.push(evento);
+    }
+
+    expect(eventos).toHaveLength(1);
+    expect(chamadas[0].cabecalhos['Idempotency-Key']).toBe('chave-1');
+  });
+
+  it('não envia Idempotency-Key quando não há chave', async () => {
+    const chamadas = simularFetch({ 'GET /api/v1/projetos': () => respostaJson({ itens: [] }) });
+
+    await api.requisitar('/api/v1/projetos');
+
+    expect(chamadas[0].cabecalhos['Idempotency-Key']).toBeUndefined();
+  });
+
   it('transforma Problem Details em ErroApi com o code', async () => {
     simularFetch({
       'GET /api/v1/projetos/x': () =>

@@ -1,14 +1,15 @@
 using FluentValidation;
+using ProjectPricing.Api.Idempotencia;
 using ProjectPricing.Dominio.Comum;
 using ProjectPricing.Dominio.Projetos;
 
 namespace ProjectPricing.Api.Projetos;
 
 /// <summary>Corpo do POST /api/v1/projetos.</summary>
-public sealed record CriarProjetoRequisicao(string? Descricao);
+public sealed record CriarProjetoRequisicao(string? Descricao) : IRequisicaoIdempotente;
 
 /// <summary>Corpo do POST /api/v1/projetos/{id}/mensagens.</summary>
-public sealed record EnviarMensagemRequisicao(string? Conteudo);
+public sealed record EnviarMensagemRequisicao(string? Conteudo) : IRequisicaoIdempotente;
 
 /// <summary>Query string do GET /api/v1/projetos (plano, P4).</summary>
 /// <param name="Status">Código do status: rascunho, cotado ou arquivado.</param>

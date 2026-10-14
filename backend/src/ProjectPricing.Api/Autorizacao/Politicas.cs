@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using ProjectPricing.Api.Tenancy;
 using ProjectPricing.Aplicacao.Usuarios;
 
 namespace ProjectPricing.Api.Autorizacao;
@@ -17,11 +18,13 @@ public static class Politicas
             // Qualquer endpoint sem policy explícita exige usuário autenticado.
             .SetFallbackPolicy(new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
+                .RequireClaim(TenantAtualHttp.Claim)
                 .Build())
-            .AddPolicy(PodeGerenciarCatalogo, p => p.RequireRole(Papeis.Admin))
-            .AddPolicy(PodeConsultarCatalogo, p => p.RequireRole(Papeis.Admin, Papeis.ClienteInterno))
-            .AddPolicy(PodeCotar, p => p.RequireRole(Papeis.Admin, Papeis.ClienteInterno, Papeis.ClienteExterno))
-            .AddPolicy(PodeGerenciarUsuarios, p => p.RequireRole(Papeis.Admin));
+            // Toda policy exige também o tenant: sem empresa, o usuário não acessa nenhum recurso (ADR-011).
+            .AddPolicy(PodeGerenciarCatalogo, p => p.RequireClaim(TenantAtualHttp.Claim).RequireRole(Papeis.Admin))
+            .AddPolicy(PodeConsultarCatalogo, p => p.RequireClaim(TenantAtualHttp.Claim).RequireRole(Papeis.Admin, Papeis.ClienteInterno))
+            .AddPolicy(PodeCotar, p => p.RequireClaim(TenantAtualHttp.Claim).RequireRole(Papeis.Admin, Papeis.ClienteInterno, Papeis.ClienteExterno))
+            .AddPolicy(PodeGerenciarUsuarios, p => p.RequireClaim(TenantAtualHttp.Claim).RequireRole(Papeis.Admin));
 
         return services;
     }

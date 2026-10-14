@@ -27,7 +27,7 @@ public class RepositoriosTests
         var colecao = new Mock<IMongoCollection<Material>>();
         var material = NovoMaterial();
 
-        await new MaterialRepository(colecao.Object).InserirAsync(material, CancellationToken.None);
+        await new MaterialRepository(colecao.Object, new TenantFixo()).InserirAsync(material, CancellationToken.None);
 
         colecao.Verify(c => c.InsertOneAsync(material, null, CancellationToken.None), Times.Once);
     }
@@ -43,10 +43,12 @@ public class RepositoriosTests
             .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
         var projeto = ProjetoComId(IdValido);
 
-        await new ProjetoRepository(colecao.Object).AtualizarAsync(projeto, CancellationToken.None);
+        await new ProjetoRepository(colecao.Object, new TenantFixo()).AtualizarAsync(projeto, CancellationToken.None);
 
         Assert.NotNull(filtroUsado);
-        Assert.Equal(new BsonDocument { ["_id"] = ObjectId.Parse(IdValido), ["versao"] = 0 }, Renderizar(filtroUsado));
+        Assert.Equal(
+            new BsonDocument { ["_id"] = ObjectId.Parse(IdValido), ["versao"] = 0, ["tenantId"] = TenantFixo.Padrao },
+            Renderizar(filtroUsado));
         Assert.Equal(1, projeto.Versao);
     }
 
@@ -59,7 +61,7 @@ public class RepositoriosTests
             .ReturnsAsync(new ReplaceOneResult.Acknowledged(0, 0, null));
 
         await Assert.ThrowsAsync<ProjectPricing.Dominio.Excecoes.ConflitoDeEdicaoException>(() =>
-            new ProjetoRepository(colecao.Object).AtualizarAsync(ProjetoComId(IdValido), CancellationToken.None));
+            new ProjetoRepository(colecao.Object, new TenantFixo()).AtualizarAsync(ProjetoComId(IdValido), CancellationToken.None));
     }
 
     [Fact]
@@ -87,7 +89,7 @@ public class RepositoriosTests
             .Callback<FilterDefinition<Projeto>, FindOptions<Projeto, Projeto>, CancellationToken>((_, opcoes, _) => opcoesUsadas = opcoes)
             .ReturnsAsync(cursor.Object);
 
-        var pagina = await new ProjetoRepository(colecao.Object).ListarAsync(new FiltroProjetos(null, null, 2, 2), CancellationToken.None);
+        var pagina = await new ProjetoRepository(colecao.Object, new TenantFixo()).ListarAsync(new FiltroProjetos(null, null, 2, 2), CancellationToken.None);
 
         Assert.Equal(3, pagina.Total);
         Assert.Single(pagina.Itens);
@@ -98,7 +100,7 @@ public class RepositoriosTests
     [Fact]
     public async Task Atualizar_entidade_sem_id_e_erro_de_programacao()
     {
-        var repositorio = new MaterialRepository(Mock.Of<IMongoCollection<Material>>());
+        var repositorio = new MaterialRepository(Mock.Of<IMongoCollection<Material>>(), new TenantFixo());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             repositorio.AtualizarAsync(NovoMaterial(), CancellationToken.None));
@@ -109,7 +111,7 @@ public class RepositoriosTests
     {
         var colecao = new Mock<IMongoCollection<Material>>(MockBehavior.Strict);
 
-        var material = await new MaterialRepository(colecao.Object).ObterPorIdAsync("nao-e-objectid", CancellationToken.None);
+        var material = await new MaterialRepository(colecao.Object, new TenantFixo()).ObterPorIdAsync("nao-e-objectid", CancellationToken.None);
 
         Assert.Null(material);
     }
@@ -120,10 +122,12 @@ public class RepositoriosTests
         var esperado = NovoMaterial();
         var colecao = ColecaoQueRetorna(esperado, out var filtros);
 
-        var material = await new MaterialRepository(colecao.Object).ObterPorIdAsync(IdValido, CancellationToken.None);
+        var material = await new MaterialRepository(colecao.Object, new TenantFixo()).ObterPorIdAsync(IdValido, CancellationToken.None);
 
         Assert.Same(esperado, material);
-        Assert.Equal(new BsonDocument("_id", ObjectId.Parse(IdValido)), Renderizar(Assert.Single(filtros)));
+        Assert.Equal(
+            new BsonDocument { ["_id"] = ObjectId.Parse(IdValido), ["tenantId"] = TenantFixo.Padrao },
+            Renderizar(Assert.Single(filtros)));
     }
 
     [Fact]
@@ -132,10 +136,55 @@ public class RepositoriosTests
         var esperada = new Conversa(IdValido);
         var colecao = ColecaoQueRetorna(esperada, out var filtros);
 
-        var conversa = await new ConversaRepository(colecao.Object).ObterPorProjetoIdAsync(IdValido, CancellationToken.None);
+        var conversa = await new ConversaRepository(colecao.Object, new TenantFixo()).ObterPorProjetoIdAsync(IdValido, CancellationToken.None);
 
         Assert.Same(esperada, conversa);
-        Assert.Equal(new BsonDocument("projetoId", ObjectId.Parse(IdValido)), Renderizar(Assert.Single(filtros)));
+        Assert.Equal(
+            new BsonDocument { ["projetoId"] = ObjectId.Parse(IdValido), ["tenantId"] = TenantFixo.Padrao },
+            Renderizar(Assert.Single(filtros)));
+    }
+
+
+    [Fact]
+    public async Task Inserir_grava_o_tenant_da_requisicao_na_entidade()
+    {
+        var colecao = new Mock<IMongoCollection<Material>>();
+        var material = NovoMaterial();
+
+        await new MaterialRepository(colecao.Object, new TenantFixo("empresa-b")).InserirAsync(material, CancellationToken.None);
+
+        Assert.Equal("empresa-b", material.TenantId);
+    }
+
+    [Fact]
+    public async Task Consultas_de_tenants_diferentes_geram_filtros_diferentes()
+    {
+        var colecaoA = ColecaoQueRetorna(NovoMaterial(), out var filtrosA);
+        var colecaoB = ColecaoQueRetorna(NovoMaterial(), out var filtrosB);
+
+        await new MaterialRepository(colecaoA.Object, new TenantFixo("empresa-a")).ObterPorIdAsync(IdValido, CancellationToken.None);
+        await new MaterialRepository(colecaoB.Object, new TenantFixo("empresa-b")).ObterPorIdAsync(IdValido, CancellationToken.None);
+
+        Assert.Equal("empresa-a", Renderizar(Assert.Single(filtrosA))["tenantId"].AsString);
+        Assert.Equal("empresa-b", Renderizar(Assert.Single(filtrosB))["tenantId"].AsString);
+    }
+
+    [Fact]
+    public async Task Atualizar_so_substitui_documento_do_mesmo_tenant()
+    {
+        var colecao = new Mock<IMongoCollection<Material>>();
+        FilterDefinition<Material>? filtroUsado = null;
+        colecao
+            .Setup(c => c.ReplaceOneAsync(It.IsAny<FilterDefinition<Material>>(), It.IsAny<Material>(), It.IsAny<ReplaceOptions>(), It.IsAny<CancellationToken>()))
+            .Callback<FilterDefinition<Material>, Material, ReplaceOptions, CancellationToken>((filtro, _, _, _) => filtroUsado = filtro)
+            .ReturnsAsync(new ReplaceOneResult.Acknowledged(1, 1, null));
+        var documento = new Material("Chapa", [], TipoMaterial.Material, "Sinalização", UnidadeMedida.MetroQuadrado, 120m, "Aço SA", Agora).ToBsonDocument();
+        documento["_id"] = ObjectId.Parse(IdValido);
+
+        await new MaterialRepository(colecao.Object, new TenantFixo("empresa-b"))
+            .AtualizarAsync(BsonSerializer.Deserialize<Material>(documento), CancellationToken.None);
+
+        Assert.Equal("empresa-b", Renderizar(filtroUsado!)["tenantId"].AsString);
     }
 
     private static Material NovoMaterial() =>

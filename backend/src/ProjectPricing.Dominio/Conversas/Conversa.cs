@@ -1,7 +1,9 @@
+using ProjectPricing.Dominio.Tenancy;
+
 namespace ProjectPricing.Dominio.Conversas;
 
 /// <summary>Histórico de mensagens entre cliente e agente de um projeto (relação 1:1).</summary>
-public sealed class Conversa
+public sealed class Conversa : EntidadeDoTenant
 {
     public Conversa(string projetoId)
     {

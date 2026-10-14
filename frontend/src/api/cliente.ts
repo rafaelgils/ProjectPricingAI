@@ -22,6 +22,8 @@ export interface OpcoesRequisicao {
   metodo?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   corpo?: unknown;
   sinal?: AbortSignal;
+  /** Idempotency-Key: repetir a mesma chave não cria outro projeto nem chama o LLM de novo (ADR-012). */
+  chaveIdempotencia?: string;
 }
 
 /**
@@ -54,10 +56,11 @@ export class ClienteApi {
     caminho: string,
     corpo: unknown,
     sinal?: AbortSignal,
+    chaveIdempotencia?: string,
   ): AsyncGenerator<EventoConversa> {
     const resposta = await this.enviar(
       caminho,
-      { metodo: 'POST', corpo, sinal },
+      { metodo: 'POST', corpo, sinal, chaveIdempotencia },
       'text/event-stream',
     );
     if (!resposta.body) {
@@ -78,6 +81,9 @@ export class ClienteApi {
     }
     if (opcoes.corpo !== undefined) {
       cabecalhos['Content-Type'] = 'application/json';
+    }
+    if (opcoes.chaveIdempotencia) {
+      cabecalhos['Idempotency-Key'] = opcoes.chaveIdempotencia;
     }
 
     const resposta = await fetch(`${this.urlBase}${caminho}`, {

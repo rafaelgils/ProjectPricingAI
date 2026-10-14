@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using ProjectPricing.Api.Autorizacao;
+using ProjectPricing.Api.Idempotencia;
 using ProjectPricing.Api.Materiais;
 using ProjectPricing.Api.Sse;
 using ProjectPricing.Api.Validacao;
@@ -21,6 +22,7 @@ public static class ProjetosEndpoints
 
         projetos.MapPost("/", Criar)
             .Validar<CriarProjetoRequisicao>()
+            .Idempotente()
             .Produces(StatusCodes.Status201Created, contentType: EscritorSse.TipoConteudo)
             .WithSummary("Cria o projeto a partir da descrição e responde a cotação em SSE");
 
@@ -38,6 +40,7 @@ public static class ProjetosEndpoints
 
         projetos.MapPost("/{id}/mensagens", EnviarMensagem)
             .Validar<EnviarMensagemRequisicao>()
+            .Idempotente()
             .Produces(StatusCodes.Status200OK, contentType: EscritorSse.TipoConteudo)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)

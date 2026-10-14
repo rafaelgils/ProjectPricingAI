@@ -1,9 +1,10 @@
+using ProjectPricing.Dominio.Tenancy;
 using ProjectPricing.Dominio.Comum;
 
 namespace ProjectPricing.Dominio.Materiais;
 
 /// <summary>Insumo ou serviço do catálogo (business-rules.md RN04 e RN10).</summary>
-public sealed class Material
+public sealed class Material : EntidadeDoTenant
 {
     public Material(
         string nome,

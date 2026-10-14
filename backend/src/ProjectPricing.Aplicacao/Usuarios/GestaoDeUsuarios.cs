@@ -1,4 +1,5 @@
 using ProjectPricing.Dominio.Excecoes;
+using ProjectPricing.Dominio.Tenancy;
 
 namespace ProjectPricing.Aplicacao.Usuarios;
 
@@ -12,7 +13,8 @@ public sealed record UsuarioGerenciado(
     string? Email,
     string? Papel,
     bool Ativo,
-    DateTimeOffset CriadoEm);
+    DateTimeOffset CriadoEm,
+    string? TenantId = null);
 
 public sealed record DadosNovoUsuario(
     string Usuario,
@@ -20,7 +22,8 @@ public sealed record DadosNovoUsuario(
     string Sobrenome,
     string Email,
     string Papel,
-    string SenhaTemporaria);
+    string SenhaTemporaria,
+    string? TenantId = null);
 
 public sealed record DadosAlteracaoUsuario(string Nome, string Sobrenome, string Email, string Papel, bool Ativo);
 
@@ -29,11 +32,15 @@ public sealed record PaginaDeUsuarios(IReadOnlyList<UsuarioGerenciado> Itens, lo
 /// <summary>Porta para a Keycloak Admin API (RF10). A API /usuarios só repassa para ela.</summary>
 public interface IGestaoIdentidade
 {
-    Task<PaginaDeUsuarios> ListarAsync(string? busca, int pagina, int tamanho, CancellationToken cancellationToken);
+    /// <summary>Lista só os usuários da empresa <paramref name="tenantId"/> (ADR-011).</summary>
+    Task<PaginaDeUsuarios> ListarAsync(string tenantId, string? busca, int pagina, int tamanho, CancellationToken cancellationToken);
 
     Task<UsuarioGerenciado?> ObterAsync(string id, CancellationToken cancellationToken);
 
-    /// <summary>Cria o usuário ativo, com a senha temporária (troca obrigatória no primeiro login).</summary>
+    /// <summary>
+    /// Cria o usuário ativo, com a senha temporária (troca obrigatória no primeiro login) e o tenant de
+    /// <see cref="DadosNovoUsuario.TenantId"/>.
+    /// </summary>
     /// <returns>O id do usuário criado.</returns>
     /// <exception cref="UsuarioDuplicadoException">Usuário ou e-mail já existe.</exception>
     Task<string> CriarAsync(DadosNovoUsuario dados, CancellationToken cancellationToken);
@@ -46,21 +53,27 @@ public interface IGestaoIdentidade
 }
 
 /// <summary>Casos de uso da gestão de usuários pelo Admin (RF10). Não há autocadastro.</summary>
-public sealed class ServicoUsuarios(IGestaoIdentidade identidade, IUsuarioAtual usuarioAtual)
+public sealed class ServicoUsuarios(IGestaoIdentidade identidade, IUsuarioAtual usuarioAtual, ITenantAtual tenant)
 {
     public static readonly IReadOnlyList<string> PapeisDoSistema = [Papeis.Admin, Papeis.ClienteInterno, Papeis.ClienteExterno];
 
     private const string Recurso = "Usuário";
 
     public Task<PaginaDeUsuarios> ListarAsync(string? busca, int pagina, int tamanho, CancellationToken cancellationToken) =>
-        identidade.ListarAsync(busca, pagina, tamanho, cancellationToken);
+        identidade.ListarAsync(tenant.TenantId, busca, pagina, tamanho, cancellationToken);
 
-    public async Task<UsuarioGerenciado> ObterAsync(string id, CancellationToken cancellationToken) =>
-        await identidade.ObterAsync(id, cancellationToken) ?? throw new RecursoNaoEncontradoException(Recurso, id);
+    /// <summary>Usuário de outra empresa é tratado como inexistente: o Admin só enxerga o próprio tenant (ADR-011).</summary>
+    public async Task<UsuarioGerenciado> ObterAsync(string id, CancellationToken cancellationToken)
+    {
+        var usuario = await identidade.ObterAsync(id, cancellationToken);
+        return usuario is not null && usuario.TenantId == tenant.TenantId
+            ? usuario
+            : throw new RecursoNaoEncontradoException(Recurso, id);
+    }
 
     public async Task<UsuarioGerenciado> CriarAsync(DadosNovoUsuario dados, CancellationToken cancellationToken)
     {
-        var id = await identidade.CriarAsync(dados, cancellationToken);
+        var id = await identidade.CriarAsync(dados with { TenantId = tenant.TenantId }, cancellationToken);
         await identidade.DefinirPapelAsync(id, dados.Papel, cancellationToken);
         return await ObterAsync(id, cancellationToken);
     }

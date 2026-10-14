@@ -1,6 +1,7 @@
 using Moq;
 using ProjectPricing.Aplicacao.Usuarios;
 using ProjectPricing.Dominio.Excecoes;
+using ProjectPricing.Dominio.Tenancy;
 
 namespace ProjectPricing.Aplicacao.Tests.Usuarios;
 
@@ -10,29 +11,61 @@ public class ServicoUsuariosTests
     private const string Id = "usuario-1";
     private static readonly DateTimeOffset Criacao = new(2026, 10, 4, 17, 30, 0, TimeSpan.Zero);
     private static readonly UsuarioGerenciado Usuario = new(
-        Id, "maria", "Maria", "Silva", "maria@empresa.com", Papeis.ClienteInterno, true, Criacao);
+        Id, "maria", "Maria", "Silva", "maria@empresa.com", Papeis.ClienteInterno, true, Criacao, "empresa-a");
 
     private readonly Mock<IGestaoIdentidade> _identidade = new();
     private readonly Mock<IUsuarioAtual> _usuarioAtual = new();
+    private readonly Mock<ITenantAtual> _tenant = new();
 
     public ServicoUsuariosTests()
     {
         _usuarioAtual.SetupGet(u => u.KeycloakId).Returns(IdAdminLogado);
+        _tenant.SetupGet(t => t.TenantId).Returns("empresa-a");
         _identidade.Setup(i => i.ObterAsync(Id, It.IsAny<CancellationToken>())).ReturnsAsync(Usuario);
     }
 
-    private ServicoUsuarios Servico => new(_identidade.Object, _usuarioAtual.Object);
+    private ServicoUsuarios Servico => new(_identidade.Object, _usuarioAtual.Object, _tenant.Object);
 
     [Fact]
     public async Task Criar_cria_define_o_papel_e_devolve_o_usuario()
     {
         var dados = new DadosNovoUsuario("maria", "Maria", "Silva", "maria@empresa.com", Papeis.ClienteInterno, "Temp@1234");
-        _identidade.Setup(i => i.CriarAsync(dados, It.IsAny<CancellationToken>())).ReturnsAsync(Id);
+        var comTenant = dados with { TenantId = "empresa-a" };
+        _identidade.Setup(i => i.CriarAsync(comTenant, It.IsAny<CancellationToken>())).ReturnsAsync(Id);
 
         var criado = await Servico.CriarAsync(dados, CancellationToken.None);
 
         Assert.Same(Usuario, criado);
         _identidade.Verify(i => i.DefinirPapelAsync(Id, Papeis.ClienteInterno, CancellationToken.None), Times.Once);
+    }
+
+    [Fact]
+    public async Task Usuario_de_outra_empresa_e_tratado_como_inexistente()
+    {
+        _identidade.Setup(i => i.ObterAsync("de-outra-empresa", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Usuario with { Id = "de-outra-empresa", TenantId = "empresa-b" });
+
+        await Assert.ThrowsAsync<RecursoNaoEncontradoException>(() => Servico.ObterAsync("de-outra-empresa", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Alterar_usuario_de_outra_empresa_nao_chama_o_keycloak()
+    {
+        _identidade.Setup(i => i.ObterAsync("de-outra-empresa", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Usuario with { Id = "de-outra-empresa", TenantId = "empresa-b" });
+        var dados = new DadosAlteracaoUsuario("Maria", "Souza", "maria@empresa.com", Papeis.Admin, true);
+
+        await Assert.ThrowsAsync<RecursoNaoEncontradoException>(() => Servico.AlterarAsync("de-outra-empresa", dados, CancellationToken.None));
+
+        _identidade.Verify(i => i.DefinirPapelAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Listar_pede_ao_keycloak_so_o_tenant_da_requisicao()
+    {
+        await Servico.ListarAsync("mar", 1, 20, CancellationToken.None);
+
+        _identidade.Verify(i => i.ListarAsync("empresa-a", "mar", 1, 20, CancellationToken.None), Times.Once);
     }
 
     [Fact]

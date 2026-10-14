@@ -1,17 +1,18 @@
 using MongoDB.Driver;
 using ProjectPricing.Dominio.Excecoes;
 using ProjectPricing.Dominio.Projetos;
+using ProjectPricing.Dominio.Tenancy;
 
 namespace ProjectPricing.Infraestrutura.Repositorios;
 
-public sealed class ProjetoRepository(IMongoCollection<Projeto> colecao)
-    : RepositorioMongo<Projeto>(colecao, p => p.Id), IProjetoRepository
+public sealed class ProjetoRepository(IMongoCollection<Projeto> colecao, ITenantAtual tenant)
+    : RepositorioMongo<Projeto>(colecao, p => p.Id, tenant), IProjetoRepository
 {
     private static readonly FilterDefinitionBuilder<Projeto> Filtro = Builders<Projeto>.Filter;
 
     public async Task<PaginaDeProjetos> ListarAsync(FiltroProjetos filtro, CancellationToken cancellationToken)
     {
-        var condicao = MontarFiltro(filtro);
+        var condicao = MontarFiltro(filtro) & DoTenant;
 
         var total = await Colecao.CountDocumentsAsync(condicao, cancellationToken: cancellationToken);
         var opcoes = new FindOptions<Projeto>
@@ -32,7 +33,7 @@ public sealed class ProjetoRepository(IMongoCollection<Projeto> colecao)
     {
         var id = projeto.Id ?? throw new InvalidOperationException("Projeto sem id não pode ser atualizado.");
         var versaoLida = projeto.Versao;
-        var condicao = Filtro.Eq(p => p.Id, id) & Filtro.Eq(p => p.Versao, versaoLida);
+        var condicao = Filtro.Eq(p => p.Id, id) & Filtro.Eq(p => p.Versao, versaoLida) & DoTenant;
 
         projeto.AvancarVersao();
         var resultado = await Colecao.ReplaceOneAsync(condicao, projeto, cancellationToken: cancellationToken);

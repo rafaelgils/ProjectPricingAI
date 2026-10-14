@@ -4,6 +4,10 @@ Entregável da atividade "Refatoração de Arquitetura". Os prompts seguem as tr
 (`04.1_Guia_Demonstracao.md`), adaptados ao ProjectPricingAI: o roteiro é voltado a Java (Records, Virtual Threads), e este projeto já
 é .NET 10, então os prompts de migração de versão foram trocados por prompts de arquitetura e segurança.
 
+> **Nota de transparência.** Os prompts P0.1 e P0.2 são as mensagens do aluno, quase literais. Os prompts P1.1 a P3.2 descrevem,
+> no formato do roteiro, a instrução dada em cada etapa da execução assistida; foram redigidos a partir do que foi feito e
+> são representativos, não uma transcrição palavra a palavra da conversa.
+
 ## 0. Prompts de condução (mensagens do aluno)
 
 **P0.1 — Enunciado e ideias do grupo**
